@@ -71,10 +71,10 @@ label{display:block;color:var(--muted);font-size:12px;margin:12px 0 6px}.field{w
 <dialog id="settingsDialog">
 <div class="modalhead"><b>設定・バックアップ</b><button class="iconbtn" onclick="settingsDialog.close()">✕</button></div>
 <div class="modalbody">
-<div class="notice"><b>標準検索：</b>日本語Wikipedia / Wikimedia Commons（APIキー不要）<br>タイトルから日本語記事・発売情報・価格表記・複数画像候補をアプリ内検索します。取得できない項目は空欄のままにし、推測値は保存しません。</div><label>Twitch Client ID / Access Token（推奨・ゲーム本体検索）</label>
-<div class="row"><input class="field" id="twitchClient" placeholder="Client ID"><input class="field" id="twitchToken" type="password" placeholder="Access Token"></div>
-<button class="btn" id="saveTwitch" style="margin-top:8px">ゲーム検索設定を保存</button>
-<div class="notice">設定するとゲーム名検索をTwitch/IGDB系のゲーム専用検索へ切り替えます。タイトル部分一致と公式box art候補を使うため、Wikipedia検索より正確です。</div><label>Brave Search APIキー（推奨・Web画像検索）</label><div class="api"><input class="field" id="braveKey" type="password" placeholder="高精度なWeb画像検索に使用"><button class="btn" id="saveBrave">保存</button></div><div class="notice">設定すると、タイトル＋選択した版＋機種＋「日本版 パッケージ box art」でWeb画像検索し、アプリ内に候補を表示します。日本語・日本向け検索を優先します。</div><label>MobyGames APIキー（任意・高精度パッケージ検索）</label><div class="api"><input class="field" id="mobyKey" type="password" placeholder="未設定でも使用できます"><button class="btn" id="saveMoby">保存</button></div><div class="notice">設定すると、パッケージ画像検索をMobyGamesの「Japan / Front Cover / 選択機種」優先へ切り替えます。未設定時は無料標準検索を使います。</div>
+<div class="notice"><b>標準検索：</b>日本語Wikipedia / Wikimedia Commons（APIキー不要）<br>タイトルから日本語記事・発売情報・価格表記・複数画像候補をアプリ内検索します。取得できない項目は空欄のままにし、推測値は保存しません。</div><label>楽天ウェブサービス（推奨・日本国内ゲーム検索）</label>
+<div class="row"><input class="field" id="rakutenAppId" placeholder="楽天 Application ID"><input class="field" id="rakutenAccessKey" type="password" placeholder="楽天 Access Key"></div>
+<button class="btn" id="saveRakuten" style="margin-top:8px">国内ゲーム検索設定を保存</button>
+<div class="notice"><b>日本語検索が標準です。</b>「ファイナルファンタジー」「ポケットモンスター」など日本語のまま検索します。楽天ブックスのゲームタイトル・対応機種・発売元・JAN・価格・発売日・商品画像を利用します。未設定時はMADB/Wikipedia系の国内データ検索へ自動フォールバックします。</div><label>Brave Search APIキー（推奨・Web画像検索）</label><div class="api"><input class="field" id="braveKey" type="password" placeholder="高精度なWeb画像検索に使用"><button class="btn" id="saveBrave">保存</button></div><div class="notice">設定すると、タイトル＋選択した版＋機種＋「日本版 パッケージ box art」でWeb画像検索し、アプリ内に候補を表示します。日本語・日本向け検索を優先します。</div><label>MobyGames APIキー（任意・高精度パッケージ検索）</label><div class="api"><input class="field" id="mobyKey" type="password" placeholder="未設定でも使用できます"><button class="btn" id="saveMoby">保存</button></div><div class="notice">設定すると、パッケージ画像検索をMobyGamesの「Japan / Front Cover / 選択機種」優先へ切り替えます。未設定時は無料標準検索を使います。</div>
 <button class="btn" id="exportBtn">バックアップを書き出す</button>
 <button class="btn" id="importBtn">バックアップを読み込む</button>
 <input type="file" id="importFile" accept="application/json" hidden>
@@ -159,61 +159,120 @@ function extractRetail(text=''){
  for(const p of pats){const m=text.match(p);if(m){const n=Number(m[1].replace(/,/g,''));if(n>=500&&n<=200000)return n}}
  return '';
 }
+function normalizeJP(s){return String(s||'').normalize('NFKC').toLowerCase().replace(/\s+/g,' ').trim()}
+function rakutenItems(d){
+ const a=d.Items||d.items||[];
+ return a.map(x=>x.Item||x).filter(Boolean);
+}
+function guessEditionFromTitle(t){
+ if(/hd\s*remaster|hdリマスター/i.test(t))return 'HD Remaster';
+ if(/remaster|リマスター/i.test(t))return 'Remaster';
+ if(/remake|リメイク/i.test(t))return 'Remake';
+ if(/international|インターナショナル/i.test(t))return 'International';
+ if(/best|廉価|the best/i.test(t))return '廉価版 / Best版';
+ return '通常版 / 初期版';
+}
 async function searchGames(){
- const q=$('gameSearch').value.trim(); if(!q)return;
- $('searchNotice').textContent='ゲームタイトルを検索中…'; $('results').innerHTML='';
- const client=localStorage.getItem('gameStock_twitch_client')||'', token=localStorage.getItem('gameStock_twitch_token')||'';
- if(client&&token){
+ const q=$('gameSearch').value.trim();if(!q)return;
+ $('searchNotice').textContent=`「${q}」を日本語タイトルで検索中…`;$('results').innerHTML='';
+ const appId=localStorage.getItem('gameStock_rakuten_appid')||'';
+ const access=localStorage.getItem('gameStock_rakuten_accesskey')||'';
+ if(appId&&access){
   try{
-   const r=await fetch('https://api.twitch.tv/helix/search/categories?'+new URLSearchParams({query:q,first:'40'}),{headers:{'Client-Id':client,'Authorization':'Bearer '+token}});
+   const u='https://openapi.rakuten.co.jp/services/api/BooksGame/Search/20170404?'+new URLSearchParams({
+    format:'json',formatVersion:'2',applicationId:appId,accessKey:access,title:q,hits:'30',booksGenreId:'006',outOfStockFlag:'1'
+   });
+   const r=await fetch(u);
    if(r.ok){
-    const d=await r.json(), games=(d.data||[]).filter(x=>x.name);
-    if(games.length){
-     $('searchNotice').textContent=`${games.length}件見つかりました。オリジナル版・リマスター版など、登録したいゲームを選んでください。`;
-     $('results').innerHTML=games.map((g,i)=>{const img=(g.box_art_url||'').replace('{width}','360').replace('{height}','480');return `<button class="result"><img src="${img}" alt="" loading="lazy"><div>${esc(g.name)}<small>ゲームID: ${esc(g.id)}</small></div></button>`}).join('');
-     [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectGameResult(games[i]));
-     return;
-    }
-   }else if(r.status===401){$('searchNotice').textContent='ゲーム検索トークンが無効または期限切れです。無料標準検索へ切り替えます。'}
+    const d=await r.json(),items=rakutenItems(d);
+    if(items.length){showRakutenGames(items,q);return}
+   }
   }catch(e){}
  }
- await searchWikipediaGames(q);
+ await searchMADBGames(q);
 }
-async function searchWikipediaGames(q){
+function showRakutenGames(items,q){
+ const nq=normalizeJP(q);
+ items.sort((a,b)=>{
+  const A=normalizeJP(a.title||a.itemName),B=normalizeJP(b.title||b.itemName);
+  return (B===nq)-(A===nq) || (B.startsWith(nq))-(A.startsWith(nq));
+ });
+ $('searchNotice').textContent=`日本国内の商品データから${items.length}件見つかりました。登録する版・機種を選んでください。`;
+ $('results').innerHTML=items.map((g,i)=>{
+  const title=g.title||g.itemName||'', hw=g.hardware||'', img=g.largeImageUrl||g.mediumImageUrl||g.smallImageUrl||'';
+  const price=g.itemPrice?`¥${Number(g.itemPrice).toLocaleString('ja-JP')}`:'';
+  return `<button class="result">${img?`<img src="${img}" alt="" loading="lazy">`:`<div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee;color:#888">NO IMAGE</div>`}<div>${esc(title)}<small>${esc(hw)} ${price}</small></div></button>`;
+ }).join('');
+ [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectRakutenGame(items[i]));
+}
+function selectRakutenGame(g){
+ const title=g.title||g.itemName||'';
+ $('fTitle').value=title;
+ const ed=guessEditionFromTitle(title);setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);
+ const hw=g.hardware||'';fillPlatformSelect(commonPlatforms,detectPlatform(hw)||hw);
+ if(g.salesDate){
+  const m=String(g.salesDate).match(/((?:19|20)\d{2})[年\/.-](\d{1,2})[月\/.-](\d{1,2})/);
+  if(m)$('fRelease').value=`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+ }
+ $('fPublisher').value=g.label||'';
+ if(g.itemPrice)$('fRetail').value=g.itemPrice;
+ const img=g.largeImageUrl||g.mediumImageUrl||g.smallImageUrl||'';
+ if(img){selectedImage=img;$('selectedCover').src=img;$('selectedCover').hidden=false}
+ $('results').innerHTML='';
+ $('searchNotice').textContent=`「${title}」を選択しました。版・機種・価格・発売日を確認して登録できます。`;
+}
+async function searchMADBGames(q){
+ // Current MADB public SPARQL endpoint. Query Japanese labels and game-package resources.
  try{
-  // Broaden queries instead of forcing "リマスター", which previously broke exact-title discovery.
-  const queries=[q, q+' コンピュータゲーム', q+' ゲーム'];
-  let pages=[];
+  const sparql=`PREFIX schema: <https://schema.org/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX ma: <https://mediaarts-db.artmuseums.go.jp/data/property#>
+SELECT DISTINCT ?item ?label ?platform ?publisher ?date WHERE {
+ ?item schema:genre "ゲームパッケージ"; rdfs:label ?label.
+ FILTER(CONTAINS(LCASE(STR(?label)), LCASE("${q.replace(/["\\]/g,' ')}")))
+ OPTIONAL {?item schema:gamePlatform ?platform}
+ OPTIONAL {?item schema:publisher ?publisher}
+ OPTIONAL {?item ma:datePublished ?date}
+} LIMIT 30`;
+  const r=await fetch('https://mediaarts-db.artmuseums.go.jp/sparql?'+new URLSearchParams({query:sparql,format:'application/sparql-results+json'}),{headers:{Accept:'application/sparql-results+json'}});
+  if(r.ok){
+   const d=await r.json(),rows=d.results?.bindings||[];
+   if(rows.length){
+    const games=rows.map(x=>({title:x.label?.value||'',hardware:x.platform?.value||'',label:x.publisher?.value||'',salesDate:x.date?.value||'',itemUrl:x.item?.value||''}));
+    showMADBGames(games);return;
+   }
+  }
+ }catch(e){}
+ await searchWikipediaGamesJP(q);
+}
+function showMADBGames(items){
+ $('searchNotice').textContent=`メディア芸術データベースから${items.length}件見つかりました。日本語タイトルの候補を選んでください。`;
+ $('results').innerHTML=items.map((g,i)=>`<button class="result"><div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee;color:#777;font-weight:800">GAME</div><div>${esc(g.title)}<small>${esc(g.hardware)} ${esc(g.label)}</small></div></button>`).join('');
+ [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectDomesticFallback(items[i]));
+}
+function selectDomesticFallback(g){
+ $('fTitle').value=g.title||'';const ed=guessEditionFromTitle(g.title||'');setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);
+ fillPlatformSelect(commonPlatforms,detectPlatform(g.hardware||''));
+ $('fPublisher').value=g.label||'';
+ const m=String(g.salesDate||'').match(/((?:19|20)\d{2})[-\/年](\d{1,2})[-\/月](\d{1,2})/);
+ if(m)$('fRelease').value=`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+ $('results').innerHTML='';$('searchNotice').textContent='ゲームを選択しました。パッケージ画像は「高精度検索」または端末写真から設定できます。';
+}
+async function searchWikipediaGamesJP(q){
+ try{
+  const queries=[q,q+' ゲーム',q+' コンピュータゲーム'];let pages=[];
   for(const query of queries){
    const api='https://ja.wikipedia.org/w/api.php?origin=*&action=query&format=json&generator=search&gsrnamespace=0&gsrlimit=12&gsrsearch='+encodeURIComponent(query)+'&prop=pageimages|extracts&piprop=thumbnail&pithumbsize=400&exintro=1&explaintext=1';
-   const d=await wikiJSON(api); pages.push(...Object.values(d.query?.pages||{}));
+   const d=await wikiJSON(api);pages.push(...Object.values(d.query?.pages||{}));
   }
   const seen=new Set();pages=pages.filter(x=>!seen.has(x.pageid)&&(seen.add(x.pageid),true));
   const gameWords=/ゲーム|PlayStation|プレイステーション|Nintendo|任天堂|Xbox|Windows|Steam|スクウェア|エニックス|カプコン|セガ|バンダイ|ナムコ|コナミ/i;
   pages=pages.filter(x=>gameWords.test((x.title||'')+' '+(x.extract||''))).slice(0,20);
-  if(!pages.length){$('searchNotice').textContent='ゲーム候補が見つかりません。正式名・略称の両方を試してください。';return}
-  $('searchNotice').textContent='無料標準検索の候補です。登録したい作品・版を選択してください。';
-  $('results').innerHTML=pages.map((g,i)=>`<button class="result">${g.thumbnail?`<img src="${g.thumbnail.source}" alt="" loading="lazy">`:`<div style="aspect-ratio:3/4;display:grid;place-items:center;background:#222;color:#aaa">NO IMAGE</div>`}<div>${esc(g.title)}<small>${esc((g.extract||'').slice(0,80))}</small></div></button>`).join('');
+  if(!pages.length){$('searchNotice').textContent='日本語タイトルのゲーム候補が見つかりませんでした。';return}
+  $('searchNotice').textContent='日本語の補助検索結果です。登録するゲームを選んでください。';
+  $('results').innerHTML=pages.map(g=>`<button class="result">${g.thumbnail?`<img src="${g.thumbnail.source}" alt="" loading="lazy">`:`<div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee;color:#888">GAME</div>`}<div>${esc(g.title)}<small>${esc((g.extract||'').slice(0,80))}</small></div></button>`).join('');
   [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectWikiResult(pages[i]));
- }catch(e){$('searchNotice').textContent='ゲーム検索に失敗しました。通信状態を確認してください。'}
-}
-async function selectGameResult(g){
- rawgGame={id:g.id};$('fTitle').value=g.name||'';
- const name=g.name||'', eds=inferEditions(name,'');setEditionChoices(eds,eds[0]||'通常版 / 初期版');
- fillPlatformSelect(commonPlatforms);
- const img=(g.box_art_url||'').replace('{width}','600').replace('{height}','800');
- if(img){selectedImage=img;$('selectedCover').src=img;$('selectedCover').hidden=false}
- $('results').innerHTML='';$('searchNotice').textContent='ゲームを選択しました。版と機種を選び、必要ならパッケージ画像を高精度検索してください。';
- // Supplement metadata from Japanese Wikipedia without making it the primary game search.
- try{
-  const api='https://ja.wikipedia.org/w/api.php?origin=*&action=query&format=json&generator=search&gsrnamespace=0&gsrlimit=5&gsrsearch='+encodeURIComponent(name)+'&prop=extracts&explaintext=1';
-  const d=await wikiJSON(api), pg=Object.values(d.query?.pages||{})[0];
-  if(pg){
-   const txt=pg.extract||'', det=detectPlatform(txt);if(det)fillPlatformSelect(commonPlatforms,det);
-   const retail=extractRetail(txt);if(retail)$('fRetail').value=retail;
-   const dm=txt.match(/((?:19|20)\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);if(dm)$('fRelease').value=`${dm[1]}-${String(dm[2]).padStart(2,'0')}-${String(dm[3]).padStart(2,'0')}`;
-  }
- }catch(e){}
+ }catch(e){$('searchNotice').textContent='国内ゲーム検索に失敗しました。通信状態を確認してください。'}
 }
 async function selectWikiResult(g){
  rawgGame=null;$('fTitle').value=g.title||'';
@@ -313,8 +372,8 @@ document.querySelectorAll('nav [data-view]').forEach(b=>b.onclick=()=>{currentVi
 ['filterText','filterPlatform','sort'].forEach(id=>$(id).addEventListener(id==='filterText'?'input':'change',render));
 $('shelfView').onclick=()=>{displayMode='shelf';localStorage.setItem('gameStock_view','shelf');render()};
 $('listView').onclick=()=>{displayMode='list';localStorage.setItem('gameStock_view','list');render()};
-$('settingsBtn').onclick=()=>{$('twitchClient').value=localStorage.getItem('gameStock_twitch_client')||'';$('twitchToken').value=localStorage.getItem('gameStock_twitch_token')||'';$('braveKey').value=localStorage.getItem('gameStock_brave_key')||'';$('mobyKey').value=localStorage.getItem('gameStock_moby_key')||'';settingsDialog.showModal()};
-$('saveTwitch').onclick=()=>{localStorage.setItem('gameStock_twitch_client',$('twitchClient').value.trim());localStorage.setItem('gameStock_twitch_token',$('twitchToken').value.trim());alert('ゲーム検索設定を保存しました')};
+$('settingsBtn').onclick=()=>{$('rakutenAppId').value=localStorage.getItem('gameStock_rakuten_appid')||'';$('rakutenAccessKey').value=localStorage.getItem('gameStock_rakuten_accesskey')||'';$('braveKey').value=localStorage.getItem('gameStock_brave_key')||'';$('mobyKey').value=localStorage.getItem('gameStock_moby_key')||'';settingsDialog.showModal()};
+$('saveRakuten').onclick=()=>{localStorage.setItem('gameStock_rakuten_appid',$('rakutenAppId').value.trim());localStorage.setItem('gameStock_rakuten_accesskey',$('rakutenAccessKey').value.trim());alert('国内ゲーム検索設定を保存しました')};
 $('saveBrave').onclick=()=>{localStorage.setItem('gameStock_brave_key',$('braveKey').value.trim());alert('Brave Search APIキーを端末内に保存しました')};
 $('saveMoby').onclick=()=>{localStorage.setItem('gameStock_moby_key',$('mobyKey').value.trim());alert('MobyGames APIキーを端末内に保存しました')};
 $('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='GAME_STOCK_backup.json';a.click();URL.revokeObjectURL(a.href)};
