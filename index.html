@@ -479,8 +479,8 @@ function wikiPlatforms(v){
 }
 function isGameArticle(wt,extract,title,query){
  const head=String(wt||'').slice(0,18000);
- const hasGameTemplate=/\{\{\s*(?:コンピュータゲーム|Infobox\s+(?:video game|VG)|Video game reviews)/i.test(head);
- const hasGameFields=/\|\s*(?:対応機種|Plat|発売日|Date|開発元|Dev|発売元|Pub)\s*=/i.test(head);
+ const hasGameTemplate=/\{\{\s*(?:コンピュータゲーム|ゲーム|Infobox\s+(?:video game|VG)|Video game reviews)/i.test(head);
+ const hasGameFields=/\|\s*(?:対応機種|対応ハード|プラットフォーム|Plat|Platform|発売日|Date|Released|開発元|開発|Dev|Developer|発売元|販売元|Pub|Publisher)\s*=/i.test(head);
  const text=(extract||'')+' '+head;
  const isPersonOrCompany=/\{\{\s*(?:基礎情報\s+人物|Infobox\s+person|基礎情報\s+会社|Infobox\s+company)/i.test(head);
  if(isPersonOrCompany)return false;
@@ -492,41 +492,74 @@ async function wikiAPI(params,host='ja.wikipedia.org'){
  const r=await fetch(u,{mode:'cors'});if(!r.ok)throw new Error('Wikipedia HTTP '+r.status);return r.json();
 }
 async function fetchWikiGameCandidates(original){
- const searches=[`intitle:"${original}"`, `"${original}" ゲーム`, original];
+ const raw=String(original||'').trim();
+ const directTitles=[
+  raw, `${raw} (ゲーム)`, `${raw} (コンピュータゲーム)`,
+  `${raw} (ゲームソフト)`, `${raw} (ビデオゲーム)`
+ ];
  const byTitle=new Map();
+
+ // 1) Exact Japanese article titles first. This fixes titles such as
+ //    「ドラゴンクエスト」→「ドラゴンクエスト (ゲーム)」.
+ try{
+  const d=await wikiAPI({
+   action:'query',titles:directTitles.join('|'),redirects:'1',
+   prop:'extracts|pageimages|revisions|info',exintro:'1',explaintext:'1',
+   piprop:'thumbnail|original',pithumbsize:'700',
+   rvprop:'content',rvslots:'main',rvlimit:'1',inprop:'url'
+  });
+  for(const pg of Object.values(d.query?.pages||{})){
+   if(!pg.missing)byTitle.set(pg.title,pg);
+  }
+ }catch(e){ console.warn('direct wiki lookup failed',e); }
+
+ // 2) Japanese Wikipedia search only as a supplement.
+ const searches=[`"${raw}" ゲーム`, `intitle:"${raw}" ゲーム`, raw];
  for(const q of searches){
-  const d=await wikiAPI({action:'query',generator:'search',gsrsearch:q,gsrnamespace:'0',gsrlimit:'15',
-   prop:'extracts|pageimages|revisions|info',exintro:'1',explaintext:'1',piprop:'thumbnail|original',
-   pithumbsize:'700',rvprop:'content',rvslots:'main',rvlimit:'1',inprop:'url'});
-  for(const p of Object.values(d.query?.pages||{}))byTitle.set(p.title,p);
-  if(byTitle.size>=12)break;
+  try{
+   const d=await wikiAPI({
+    action:'query',generator:'search',gsrsearch:q,gsrnamespace:'0',gsrlimit:'20',
+    prop:'extracts|pageimages|revisions|info',exintro:'1',explaintext:'1',
+    piprop:'thumbnail|original',pithumbsize:'700',
+    rvprop:'content',rvslots:'main',rvlimit:'1',inprop:'url'
+   });
+   for(const pg of Object.values(d.query?.pages||{}))byTitle.set(pg.title,pg);
+  }catch(e){ console.warn('wiki search failed',q,e); }
+  if(byTitle.size>=16)break;
  }
- const oq=normalizeJP(original);
- return [...byTitle.values()].map(p=>{
-  const wt=p.revisions?.[0]?.slots?.main?.['*']||p.revisions?.[0]?.['*']||'';
-  if(!isGameArticle(wt,p.extract,p.title,original))return null;
+
+ const oq=normalizeJP(raw);
+ const out=[];
+ for(const pg of byTitle.values()){
+  const wt=pg.revisions?.[0]?.slots?.main?.['*']||pg.revisions?.[0]?.['*']||'';
+  if(!isGameArticle(wt,pg.extract,pg.title,raw))continue;
+
+  const titleBase=String(pg.title||'').replace(/\s*[（(](?:ゲーム|コンピュータゲーム|ゲームソフト|ビデオゲーム)[）)]\s*$/,'').trim();
+  const nb=normalizeJP(titleBase), nt=normalizeJP(pg.title||'');
+  let titleScore=0;
+  if(nb===oq)titleScore=160;
+  else if(nt===oq)titleScore=155;
+  else if(nb.startsWith(oq)||oq.startsWith(nb))titleScore=115;
+  else if(nb.includes(oq)||oq.includes(nb))titleScore=95;
+  else continue; // no loose related-person/company results
+
   const platRaw=wikiField(wt,['対応機種','Plat','対応プラットフォーム','Platform']);
   const dateRaw=wikiField(wt,['発売日','Date','リリース日','Released']);
   const pub=wikiField(wt,['発売元','販売元','Pub','Publisher']);
   const dev=wikiField(wt,['開発元','開発','Dev','Developer']);
   const priceRaw=wikiField(wt,['価格','定価','Price','希望小売価格']);
   const platforms=wikiPlatforms(platRaw);
-  const n=normalizeJP(p.title||'');
-  let score=0;
-  if(n===oq)score+=100;
-  if(n.startsWith(oq)||n.includes(oq))score+=60;
-  if(oq.includes(n)&&n.length>=3)score+=25;
-  if(platforms.length)score+=20;
-  if(dateRaw)score+=10;
-  return {
-   name:p.title,wikiTitle:p.title,extract:p.extract||'',wikitext:wt,
-   image:p.thumbnail?.source||p.original?.source||'',
+
+  out.push({
+   name:titleBase||pg.title,wikiTitle:pg.title,extract:pg.extract||'',wikitext:wt,
+   image:pg.thumbnail?.source||pg.original?.source||'',
    platforms,platformRaw:platRaw,released:wikiDate(dateRaw),
    publisher:wikiClean(pub),developer:wikiClean(dev),
    retail:wikiPrice(priceRaw),retailRaw:wikiClean(priceRaw),
-   wikiUrl:p.fullurl||'',_score:score
-  };
- }).filter(Boolean).filter(x=>x._score>=50).sort((x,y)=>y._score-x._score).slice(0,10);
+   wikiUrl:pg.fullurl||'',_score:titleScore+(platforms.length?20:0)+(dateRaw?10:0)
+  });
+ }
+ return out.sort((a,b)=>b._score-a._score).slice(0,10);
 }
 function candidateSubtitle(g){
  const a=[];
