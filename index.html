@@ -244,23 +244,55 @@ function showRakutenGames(items,q){
  }).join('');
  [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectRakutenGame(items[i]));
 }
+function mapStructuredHardware(hw){
+ const h=normalizeJP(hw);
+ const pairs=[
+ ['PS5',/playstation ?5|プレイステーション ?5|\bps5\b/i],
+ ['PS4',/playstation ?4|プレイステーション ?4|\bps4\b/i],
+ ['PS3',/playstation ?3|プレイステーション ?3|\bps3\b/i],
+ ['PS2',/playstation ?2|プレイステーション ?2|\bps2\b/i],
+ ['PS1',/^playstation$|^プレイステーション$|^ps1$/i],
+ ['PS Vita',/playstation vita|ps vita|psvita|ヴィータ/i],
+ ['PSP',/^psp$|playstation portable|プレイステーション・ポータブル/i],
+ ['Switch 2',/nintendo switch ?2|ニンテンドースイッチ ?2/i],
+ ['Switch',/^nintendo switch$|^ニンテンドースイッチ$/i],
+ ['3DS',/nintendo ?3ds|ニンテンドー ?3ds/i],
+ ['DS',/^nintendo ?ds$|^ニンテンドー ?ds$/i],
+ ['GBA',/game boy advance|ゲームボーイアドバンス/i],
+ ['GBC',/game boy color|ゲームボーイカラー/i],
+ ['GB',/^game boy$|^ゲームボーイ$/i],
+ ['SFC',/super famicom|スーパーファミコン/i],
+ ['FC',/famicom|ファミリーコンピュータ/i],
+ ['N64',/nintendo ?64|nintendo64/i],
+ ['GC',/gamecube|ゲームキューブ/i],
+ ['Wii U',/^wii ?u$/i],['Wii',/^wii$/i],
+ ['Steam / PC',/^steam$|^pc$|^windows$/i]
+ ];
+ for(const [name,re] of pairs)if(re.test(h))return name;
+ return '';
+}
 function selectRakutenGame(g){
  const title=g.title||g.itemName||'';
  $('fTitle').value=title;
- const ed=guessEditionFromTitle(title);setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);
- const hw=g.hardware||'';fillPlatformSelect(commonPlatforms,detectPlatform(hw)||hw);
+ const ed=guessEditionFromTitle(title);
+ setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);
+ fillPlatformSelect(commonPlatforms);
+ const pf=mapStructuredHardware(g.hardware||'');
+ if(pf)$('fPlatform').value=pf;
+ $('fRelease').value='';
  if(g.salesDate){
-  const m=String(g.salesDate).match(/((?:19|20)\d{2})[年\/.-](\d{1,2})[月\/.-](\d{1,2})/);
+  const m=String(g.salesDate).match(/((?:19|20)\d{2})[年\/.\-](\d{1,2})[月\/.\-](\d{1,2})/);
   if(m)$('fRelease').value=`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
  }
- $('fPublisher').value=cleanPublisher(g.label);
- if(g.itemPrice)$('fRetail').value=g.itemPrice;
+ $('fPublisher').value=cleanPublisher(g.label||'');
+ $('fRetail').value=(g.itemPrice&&Number.isFinite(Number(g.itemPrice)))?Number(g.itemPrice):'';
+ $('fRetailPreTax').value='';
  const img=g.largeImageUrl||g.mediumImageUrl||g.smallImageUrl||'';
- if(img){selectedImage=img;$('selectedCover').src=img;$('selectedCover').hidden=false}
+ selectedImage=img||'';
+ if(img){$('selectedCover').src=img;$('selectedCover').hidden=false}else{$('selectedCover').hidden=true;$('selectedCover').removeAttribute('src')}
  $('results').innerHTML='';
- $('searchNotice').textContent=`「${title}」を選択しました。版・機種・価格・発売日を確認して登録できます。`;
-}
-async function searchMADBGames(q){
+ $('searchNotice').textContent=`「${title}」の商品レコードを選択しました。同じレコードに含まれる情報だけを反映しています。`;
+}async function searchMADBGames(q){
  // Current MADB public SPARQL endpoint. Query Japanese labels and game-package resources.
  try{
   const sparql=`PREFIX schema: <https://schema.org/>
@@ -290,14 +322,23 @@ function showMADBGames(items){
  [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectDomesticFallback(items[i]));
 }
 function selectDomesticFallback(g){
- $('fTitle').value=g.title||'';const ed=guessEditionFromTitle(g.title||'');setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);
- fillPlatformSelect(commonPlatforms,detectPlatform(g.hardware||''));
- $('fPublisher').value=cleanPublisher(g.label);
- const m=String(g.salesDate||'').match(/((?:19|20)\d{2})[-\/年](\d{1,2})[-\/月](\d{1,2})/);
- if(m)$('fRelease').value=`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
- $('results').innerHTML='';$('searchNotice').textContent='ゲームを選択しました。パッケージ画像は「高精度検索」または端末写真から設定できます。';
-}
-async function searchWikipediaGamesJP(q){
+ $('fTitle').value=g.title||'';
+ const ed=guessEditionFromTitle(g.title||'');
+ setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);
+ fillPlatformSelect(commonPlatforms);
+ // MADB fallback is used as a title catalogue here. Do not turn URI/free text into a platform.
+ const known=commonPlatforms.find(x=>normalizeJP(g.hardware||'')===normalizeJP(x))||'';
+ if(known)$('fPlatform').value=known;
+ $('fRelease').value='';
+ $('fPublisher').value='';
+ $('fRetail').value='';
+ $('fRetailPreTax').value='';
+ selectedImage='';
+ $('selectedCover').hidden=true;
+ $('selectedCover').removeAttribute('src');
+ $('results').innerHTML='';
+ $('searchNotice').textContent='作品名を反映しました。版・機種が同一商品レコードとして確認できない項目は空欄にしています。';
+}async function searchWikipediaGamesJP(q){
  try{
   const queries=[q,q+' ゲーム',q+' コンピュータゲーム'];let pages=[];
   for(const query of queries){
@@ -314,44 +355,21 @@ async function searchWikipediaGamesJP(q){
  }catch(e){$('searchNotice').textContent='国内ゲーム検索に失敗しました。通信状態を確認してください。'}
 }
 async function selectWikiResult(g){
- rawgGame=null;$('fTitle').value=g.title||'';
- const initialEditions=inferEditions(g.title);setEditionChoices(initialEditions,initialEditions[0]||'通常版 / 初期版');
+ rawgGame=null;
+ $('fTitle').value=g.title||'';
+ const editions=inferEditions(g.title||'');
+ setEditionChoices(editions,editions.length?editions[0]:'通常版 / 初期版');
  fillPlatformSelect(commonPlatforms);
- $('results').innerHTML='';$('searchNotice').textContent='発売情報・対応機種・日本版パッケージを確認中…';
- try{
-  const parse=await wikiJSON('https://ja.wikipedia.org/w/api.php?origin=*&action=parse&format=json&page='+encodeURIComponent(g.title)+'&prop=wikitext|text');
-  const wt=parse.parse?.wikitext?.['*']||'', plain=cleanWikiText(parse.parse?.text?.['*']||'');
-  const editions=inferEditions(g.title);setEditionChoices(editions,editions.length?editions[0]:'通常版 / 初期版');
- const lead=plain.slice(0,1200);
- const detected=detectOriginalPlatform(lead);
- fillPlatformSelect(commonPlatforms,detected);
-  let dm=(wt+' '+plain).match(/(?:発売日|リリース)[^0-9]{0,80}((?:19|20)\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
-  if(dm)$('fRelease').value=`${dm[1]}-${String(dm[2]).padStart(2,'0')}-${String(dm[3]).padStart(2,'0')}`;
-  let pub=(wt.match(/\|\s*(?:発売元|販売元|publisher)\s*=\s*([^\n|]+)/i)||[])[1];
-  if(pub)$('fPublisher').value=cleanPublisher(cleanWikiText(pub.replace(/\[\[|\]\]/g,'')));
-  const retail=extractRetail(wt+' '+plain); if(retail)$('fRetail').value=retail;
- }catch(e){}
- if(localStorage.getItem('gameStock_brave_key')){
-   const ok=await searchBraveCovers(); if(ok)return;
- }
- if(localStorage.getItem('gameStock_moby_key')){
-   const ok=await searchMobyCovers(g.title,$('fPlatform').value); if(ok)return;
- }
- try{
-  const iq='intitle:"'+g.title.replace(/"/g,'')+'" (cover OR box OR package OR パッケージ)';
-  const c=await wikiJSON('https://commons.wikimedia.org/w/api.php?origin=*&action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=18&gsrsearch='+encodeURIComponent(iq)+'&prop=imageinfo&iiprop=url&iiurlwidth=500');
-  let imgs=Object.values(c.query?.pages||{}).map(x=>({title:x.title,url:x.imageinfo?.[0]?.thumburl||x.imageinfo?.[0]?.url})).filter(x=>x.url&&/\.(jpg|jpeg|png|webp)/i.test(x.url));
-  if(g.thumbnail?.source)imgs.unshift({title:'Wikipedia メイン画像',url:g.thumbnail.source});
-  if(imgs.length){
-   $('results').innerHTML=imgs.map((x,i)=>`<button class="result" data-img="${i}"><img src="${x.url}" alt=""><div>${esc(x.title.replace(/^File:/,''))}</div></button>`).join('');
-   [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>{selectedImage=imgs[i].url;$('selectedCover').src=selectedImage;$('selectedCover').hidden=false;[...$('results').children].forEach(x=>x.style.outline='');b.style.outline='2px solid var(--accent)'});
-   $('searchNotice').textContent=`${imgs.length}件の画像候補を取得しました。使う画像をタップしてください。${$('fRetail').value?' 発売時価格も検出しました。':' 価格表記は検出できなかったため空欄です。'}`;
-  }else{$('searchNotice').textContent='ゲーム情報を反映しました。利用可能な画像候補は見つかりませんでした。端末画像も選択できます。'}
- }catch(e){$('searchNotice').textContent='ゲーム情報を反映しました。画像候補の取得に失敗したため、端末画像も利用できます。'}
-}
-
-
-function coverQuery(){
+ $('fRelease').value='';
+ $('fPublisher').value='';
+ $('fRetail').value='';
+ $('fRetailPreTax').value='';
+ selectedImage='';
+ $('selectedCover').hidden=true;
+ $('selectedCover').removeAttribute('src');
+ $('results').innerHTML='';
+ $('searchNotice').textContent='日本語タイトルだけを反映しました。補助検索の記事本文から機種・発売日・メーカー・価格を推測して自動入力する処理は停止しています。機種を選ぶか、国内の商品データ検索を使用してください。';
+}function coverQuery(){
  const title=$('fTitle').value.trim(), ed=$('fEdition').value, pf=$('fPlatform').value;
  return [title,ed&&ed!=='通常版 / 初期版'?ed:'',pf,'日本版','パッケージ','box art'].filter(Boolean).join(' ');
 }
