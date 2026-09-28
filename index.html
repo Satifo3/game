@@ -120,6 +120,96 @@ label{display:block;color:var(--muted);font-size:12px;margin:12px 0 6px}.field{w
 .rank-C{background:#494844}
 </style>
 
+
+<style id="retro-game-stock-header-v1">
+/* 90s Japanese retro game shop sign */
+.brand{
+  position:relative !important;
+  margin:10px 0 18px !important;
+  padding:14px 16px 12px !important;
+  overflow:hidden !important;
+  border:3px solid #25221d !important;
+  border-radius:9px !important;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.08),transparent 30%),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,transparent 2px 5px),
+    #26313a !important;
+  box-shadow:
+    inset 0 0 0 2px #d7bd70,
+    inset 0 -6px 0 rgba(0,0,0,.20),
+    0 4px 0 #151515,
+    0 7px 12px rgba(0,0,0,.16) !important;
+}
+.brand::before{
+  content:"USED GAME • COLLECTION • ARCHIVE";
+  position:absolute;right:13px;top:8px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:7px;font-weight:800;letter-spacing:.13em;
+  color:#e4c965;opacity:.8;
+}
+.brand::after{
+  content:"";
+  position:absolute;left:15px;right:15px;bottom:9px;height:3px;
+  background:repeating-linear-gradient(90deg,#d83a31 0 16px,#e7c85f 16px 28px,#f2ead6 28px 37px,#26313a 37px 43px);
+  opacity:.95;
+}
+.brand .brandTitle{
+  position:relative;z-index:1;
+  display:inline-block;
+  margin:0 0 4px !important;
+  color:#f4ecd8 !important;
+  font-family:Impact,"Arial Black","Helvetica Neue",sans-serif !important;
+  font-size:clamp(29px,7vw,46px) !important;
+  line-height:.95 !important;
+  font-weight:950 !important;
+  letter-spacing:.045em !important;
+  font-style:italic;
+  text-transform:uppercase;
+  text-shadow:
+    3px 3px 0 #111,
+    5px 5px 0 rgba(0,0,0,.25) !important;
+  transform:skew(-4deg);
+}
+.brand .brandTitle .red,
+.brand .brandTitle span{
+  color:#e54836 !important;
+  text-shadow:3px 3px 0 #111,5px 5px 0 rgba(0,0,0,.25) !important;
+}
+.brand .brandSub{
+  position:relative;z-index:1;
+  margin:3px 0 9px !important;
+  color:#e7d79c !important;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace !important;
+  font-size:9px !important;
+  line-height:1.2 !important;
+  font-weight:800 !important;
+  letter-spacing:.16em !important;
+  text-transform:uppercase;
+}
+/* If original markup has no classes, style the known first/second brand children too */
+.brand > div:first-child{
+  position:relative;z-index:1;
+  color:#f4ecd8;
+  font-family:Impact,"Arial Black","Helvetica Neue",sans-serif;
+  font-size:clamp(29px,7vw,46px);
+  line-height:.95;font-weight:950;letter-spacing:.045em;font-style:italic;
+  text-shadow:3px 3px 0 #111,5px 5px 0 rgba(0,0,0,.25);
+  transform:skew(-4deg);transform-origin:left center;
+}
+.brand > div:nth-child(2){
+  position:relative;z-index:1;margin:6px 0 9px;
+  color:#e7d79c;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:9px;font-weight:800;letter-spacing:.16em;
+}
+@media(max-width:700px){
+ .brand{margin:7px 0 14px !important;padding:13px 12px 11px !important;border-radius:7px !important}
+ .brand::before{right:10px;top:7px;font-size:5.8px}
+ .brand::after{left:12px;right:12px;bottom:7px}
+ .brand .brandTitle,.brand > div:first-child{font-size:32px !important;letter-spacing:.035em !important}
+ .brand .brandSub,.brand > div:nth-child(2){font-size:7.5px !important;letter-spacing:.12em !important}
+}
+</style>
+
 </head>
 <body>
 <div class="app">
