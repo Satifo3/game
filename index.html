@@ -429,17 +429,128 @@ async function callGameGateway(query){
  const arr=payload?.games||payload?.results||payload?.data||[];
  return Array.isArray(arr)?arr:[];
 }
-function googleJapanGameQuery(q){
- return `${q} ゲーム 日本版 パッケージ`;
+function wikiClean(v){
+ return String(v||'')
+  .replace(/<ref[\s\S]*?<\/ref>/gi,'').replace(/<ref[^>]*\/>/gi,'')
+  .replace(/\{\{(?:small|Smaller|nowrap|lang\|ja)\|([^{}]*)\}\}/g,'$1')
+  .replace(/\[\[(?:[^|\]]+\|)?([^\]]+)\]\]/g,'$1')
+  .replace(/'{2,3}/g,'').replace(/<br\s*\/?>/gi,' / ')
+  .replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+}
+function wikiField(text,names){
+ for(const n of names){
+  const m=String(text||'').match(new RegExp('(?:^|\\n)\\s*\\|\\s*'+n+'\\s*=\\s*([^\\n]+)','i'));
+  if(m&&m[1].trim())return wikiClean(m[1]);
+ }
+ return '';
+}
+function wikiDate(v){
+ const m=String(v||'').match(/((?:19|20)\d{2})\D{0,4}(\d{1,2})\D{0,4}(\d{1,2})/);
+ if(!m)return '';
+ return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+}
+function wikiPrice(v){
+ const nums=String(v||'').replace(/[,，]/g,'').match(/\d{3,7}/g)||[];
+ const n=nums.map(Number).find(x=>x>=500&&x<=200000);
+ return n||'';
+}
+function wikiPlatform(v){
+ const x=wikiClean(v);
+ const pairs=[
+  ['PS5',/PlayStation ?5|PS5/i],['PS4',/PlayStation ?4|PS4/i],['PS3',/PlayStation ?3|PS3/i],
+  ['PS2',/PlayStation ?2|PS2/i],['PS1',/PlayStation(?! ?[2345V])|PS1/i],
+  ['PS Vita',/PlayStation Vita|PS Vita/i],['PSP',/PlayStation Portable|PSP/i],
+  ['Switch 2',/Nintendo Switch 2/i],['Switch',/Nintendo Switch(?! 2)/i],
+  ['3DS',/ニンテンドー3DS|Nintendo 3DS/i],['DS',/ニンテンドーDS|Nintendo DS/i],
+  ['GBA',/ゲームボーイアドバンス|Game Boy Advance/i],['GBC',/ゲームボーイカラー|Game Boy Color/i],
+  ['GB',/ゲームボーイ|Game Boy/i],['SFC',/スーパーファミコン|Super Famicom/i],
+  ['N64',/NINTENDO64|Nintendo 64/i],['GC',/ゲームキューブ|GameCube/i],
+  ['Wii U',/Wii U/i],['Wii',/\bWii\b/i],['Xbox 360',/Xbox 360/i],
+  ['Xbox One',/Xbox One/i],['Dreamcast',/ドリームキャスト|Dreamcast/i],
+  ['SEGA Saturn',/セガサターン|Sega Saturn/i],['Steam / PC',/Windows|Steam|PC/i]
+ ];
+ for(const [v,r] of pairs)if(r.test(x))return v;
+ return '';
+}
+async function wikiAPI(params,host='ja.wikipedia.org'){
+ const u=new URL(`https://${host}/w/api.php`);
+ Object.entries({...params,format:'json',origin:'*'}).forEach(([k,v])=>u.searchParams.set(k,v));
+ const r=await fetch(u);if(!r.ok)throw new Error('Wikipedia HTTP '+r.status);return r.json();
 }
 async function searchGames(){
  const original=$('gameSearch').value.trim();if(!original)return;
  $('results').innerHTML='';
- $('searchNotice').innerHTML=`Google日本語検索で「${esc(original)}」を検索します。<br><b>海外ゲームDBへの自動切替は無効です。</b>`;
- const url='https://www.google.com/search?'+new URLSearchParams({
-  q:googleJapanGameQuery(original),hl:'ja',gl:'jp',safe:'active'
- });
- window.open(url,'_blank','noopener,noreferrer');
+ $('searchNotice').textContent=`日本語Wikipediaで「${original}」のゲーム情報を検索中…`;
+ try{
+  let d=await wikiAPI({action:'query',generator:'search',gsrsearch:`"${original}" ゲーム`,gsrnamespace:'0',gsrlimit:'12',
+   prop:'extracts|pageimages|revisions',exintro:'1',explaintext:'1',piprop:'thumbnail',pithumbsize:'500',
+   rvprop:'content',rvslots:'main',rvlimit:'1'});
+  let pages=Object.values(d.query?.pages||{});
+  if(!pages.length){
+   d=await wikiAPI({action:'query',generator:'search',gsrsearch:original,gsrnamespace:'0',gsrlimit:'12',
+    prop:'extracts|pageimages|revisions',exintro:'1',explaintext:'1',piprop:'thumbnail',pithumbsize:'500',
+    rvprop:'content',rvslots:'main',rvlimit:'1'});
+   pages=Object.values(d.query?.pages||{});
+  }
+  const oq=normalizeJP(original);
+  const games=pages.map(p=>{
+   const wt=p.revisions?.[0]?.slots?.main?.['*']||p.revisions?.[0]?.['*']||'';
+   const plat=wikiField(wt,['Plat','対応機種','対応プラットフォーム']);
+   const date=wikiField(wt,['Date','発売日','リリース日']);
+   const pub=wikiField(wt,['Pub','発売元','販売元','パブリッシャー']);
+   const dev=wikiField(wt,['Dev','開発元','開発']);
+   const price=wikiField(wt,['Price','価格','定価']);
+   const text=(p.extract||'')+' '+wt.slice(0,12000);
+   let score=0,n=normalizeJP(p.title||'');
+   if(n===oq)score+=100;if(n.includes(oq))score+=50;
+   if(/ゲーム|PlayStation|Xbox|ファミコン|Nintendo|セガ|コンピュータゲーム/i.test(text))score+=25;
+   if(plat)score+=15;if(date)score+=8;
+   return {name:p.title,wikiTitle:p.title,background_image:p.thumbnail?.source||'',released:wikiDate(date),
+    wikiPlatform:plat,publisher:pub,developer:dev,retailText:price,extract:p.extract||'',_score:score};
+  }).filter(x=>x._score>=25).sort((x,y)=>y._score-x._score).slice(0,12);
+  if(!games.length){$('searchNotice').textContent='日本語Wikipediaでゲーム作品を特定できませんでした。検索語を正式タイトルに近づけてください。';return}
+  $('searchNotice').textContent=`${games.length}件見つかりました。登録したい作品を選ぶと情報を自動入力します。`;
+  $('results').innerHTML=games.map(g=>`<button class="result">${g.background_image?`<img src="${g.background_image}" alt="" loading="lazy">`:`<div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee;color:#777">WIKI</div>`}<div>${esc(g.name)}<small>${esc([g.released,wikiClean(g.wikiPlatform)].filter(Boolean).join(' · '))}</small></div></button>`).join('');
+  [...$('results').querySelectorAll('.result')].forEach((btn,i)=>btn.onclick=()=>selectWikiGame(games[i],original));
+ }catch(e){
+  console.error(e);$('searchNotice').textContent='Wikipediaから情報を取得できませんでした。通信状態を確認してもう一度検索してください。';
+ }
+}
+function selectWikiGame(g,original){
+ $('fTitle').value=g.name||original;
+ const ed=guessEditionFromTitle(g.name||'');setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);
+ const p=wikiPlatform(g.wikiPlatform);
+ fillPlatformSelect(p?[p]:commonPlatforms,p);
+ $('fRelease').value=g.released||'';
+ const maker=[g.developer,g.publisher].filter(Boolean).map(wikiClean);
+ $('fPublisher').value=[...new Set(maker)].join(' / ');
+ const price=wikiPrice(g.retailText);
+ $('fRetail').value=price||'';$('fRetailPreTax').value='';
+ selectedImage=g.background_image||'';
+ if(selectedImage){$('selectedCover').src=selectedImage;$('selectedCover').hidden=false}else{$('selectedCover').hidden=true;$('selectedCover').removeAttribute('src')}
+ $('results').innerHTML='';
+ const got=[g.released&&'発売日',p&&'機種',maker.length&&'開発元/発売元',price&&'定価',selectedImage&&'画像'].filter(Boolean);
+ $('searchNotice').textContent=`日本語Wikipediaから${got.length?got.join('・'):'タイトル'}を反映しました。記載のない項目は空欄のままです。`;
+}
+async function searchWikiCovers(){
+ const title=$('fTitle').value.trim()||$('gameSearch').value.trim();
+ if(!title){alert('ゲームタイトルを入力してください');return}
+ if(!$('fTitle').value.trim())$('fTitle').value=title;
+ $('results').innerHTML='';$('searchNotice').textContent='Wikipedia / Wikimediaから画像候補を検索中…';
+ try{
+  const [jp,cm]=await Promise.all([
+   wikiAPI({action:'query',generator:'search',gsrsearch:`"${title}" ゲーム`,gsrlimit:'8',prop:'pageimages',piprop:'thumbnail',pithumbsize:'900'}),
+   wikiAPI({action:'query',generator:'search',gsrsearch:`"${title}" game cover`,gsrnamespace:'6',gsrlimit:'12',prop:'imageinfo',iiprop:'url',iiurlwidth:'900'},'commons.wikimedia.org')
+  ]);
+  const imgs=[];
+  for(const p of Object.values(jp.query?.pages||{}))if(p.thumbnail?.source)imgs.push({url:p.thumbnail.source,title:p.title});
+  for(const p of Object.values(cm.query?.pages||{})){const ii=p.imageinfo?.[0];if(ii?.thumburl||ii?.url)imgs.push({url:ii.thumburl||ii.url,title:p.title.replace(/^File:/,'')})}
+  const uniq=[...new Map(imgs.map(x=>[x.url,x])).values()].slice(0,20);
+  if(!uniq.length){$('searchNotice').textContent='Wikipedia / Wikimediaには利用できる画像候補がありませんでした。「端末の写真から選ぶ」を使えます。';return}
+  $('results').innerHTML=uniq.map(x=>`<button class="result"><img src="${x.url}" alt="" loading="lazy"><div>${esc(x.title)}</div></button>`).join('');
+  [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>{selectedImage=uniq[i].url;$('selectedCover').src=selectedImage;$('selectedCover').hidden=false;[...$('results').children].forEach(x=>x.style.outline='');b.style.outline='2px solid var(--accent)'});
+  $('searchNotice').textContent=`${uniq.length}件の画像候補を表示しました。使う画像をタップしてください。`;
+ }catch(e){console.error(e);$('searchNotice').textContent='画像候補を取得できませんでした。';}
 }
 function rankGameRecords(games,original){
  const alt=normalizeJP(internalSearchQuery(original)),oq=normalizeJP(original),seen=new Set();
@@ -684,13 +795,7 @@ function imageToDataURL(file){
  return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const max=900, scale=Math.min(1,max/im.width,max*1.4/im.height),c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);c.getContext('2d').drawImage(im,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',.84))};im.onerror=reject;im.src=fr.result};fr.onerror=reject;fr.readAsDataURL(file)})
 }
 $('addBtn').onclick=()=>{resetForm();$('editDialog').showModal()};$('searchBtn').onclick=searchGames;$('gameSearch').addEventListener('keydown',e=>{if(e.key==='Enter')searchGames()});
-$('webCoverBtn').onclick=()=>{
- const title=$('fTitle').value.trim();if(!title){alert('先にタイトルを入力してください');return}
- const q=[title,$('fEdition').value,$('fPlatform').value,'ゲーム 日本版 パッケージ'].filter(Boolean).join(' ');
- const url='https://www.google.com/search?'+new URLSearchParams({tbm:'isch',q,hl:'ja',gl:'jp',safe:'active'});
- window.open(url,'_blank','noopener,noreferrer');
- $('searchNotice').textContent='Google画像検索（日本）を開きました。海外画像DBへの自動切替は行いません。';
-};
+$('webCoverBtn').onclick=searchWikiCovers;
 $('photoBtn').onclick=()=>$('coverFile').click();$('coverFile').onchange=async e=>{if(e.target.files[0]){selectedImage=await imageToDataURL(e.target.files[0]);$('selectedCover').src=selectedImage;$('selectedCover').hidden=false}};
 $('addHistory').onclick=()=>addHist({date:new Date().toISOString().slice(0,10)});
 $('saveBtn').onclick=()=>{
