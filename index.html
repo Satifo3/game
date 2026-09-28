@@ -429,23 +429,17 @@ async function callGameGateway(query){
  const arr=payload?.games||payload?.results||payload?.data||[];
  return Array.isArray(arr)?arr:[];
 }
+function googleJapanGameQuery(q){
+ return `${q} ゲーム 日本版 パッケージ`;
+}
 async function searchGames(){
  const original=$('gameSearch').value.trim();if(!original)return;
- $('results').innerHTML='';$('searchNotice').textContent=`「${original}」をゲームデータベースで検索中…`;
- let games=[];
- try{
-  games=await callGameGateway(original);
-  if(!games.length){
-   const alt=internalSearchQuery(original);
-   if(alt!==original)games=await callGameGateway(alt);
-  }
- }catch(e){
-  $('searchNotice').textContent='ゲーム検索サーバーへ接続できませんでした。通信状態を確認してもう一度検索してください。';
-  return;
- }
- if(!games.length){$('searchNotice').textContent=`「${original}」に一致するゲームが見つかりませんでした。`;return}
- games=rankGameRecords(games,original);
- showGameRecords(games,original);
+ $('results').innerHTML='';
+ $('searchNotice').innerHTML=`Google日本語検索で「${esc(original)}」を検索します。<br><b>海外ゲームDBへの自動切替は無効です。</b>`;
+ const url='https://www.google.com/search?'+new URLSearchParams({
+  q:googleJapanGameQuery(original),hl:'ja',gl:'jp',safe:'active'
+ });
+ window.open(url,'_blank','noopener,noreferrer');
 }
 function rankGameRecords(games,original){
  const alt=normalizeJP(internalSearchQuery(original)),oq=normalizeJP(original),seen=new Set();
@@ -690,7 +684,13 @@ function imageToDataURL(file){
  return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const max=900, scale=Math.min(1,max/im.width,max*1.4/im.height),c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);c.getContext('2d').drawImage(im,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',.84))};im.onerror=reject;im.src=fr.result};fr.onerror=reject;fr.readAsDataURL(file)})
 }
 $('addBtn').onclick=()=>{resetForm();$('editDialog').showModal()};$('searchBtn').onclick=searchGames;$('gameSearch').addEventListener('keydown',e=>{if(e.key==='Enter')searchGames()});
-$('webCoverBtn').onclick=async()=>{if(!(await searchBraveCovers())&&localStorage.getItem('gameStock_moby_key'))await searchMobyCovers($('fTitle').value.trim(),$('fPlatform').value)};
+$('webCoverBtn').onclick=()=>{
+ const title=$('fTitle').value.trim();if(!title){alert('先にタイトルを入力してください');return}
+ const q=[title,$('fEdition').value,$('fPlatform').value,'ゲーム 日本版 パッケージ'].filter(Boolean).join(' ');
+ const url='https://www.google.com/search?'+new URLSearchParams({tbm:'isch',q,hl:'ja',gl:'jp',safe:'active'});
+ window.open(url,'_blank','noopener,noreferrer');
+ $('searchNotice').textContent='Google画像検索（日本）を開きました。海外画像DBへの自動切替は行いません。';
+};
 $('photoBtn').onclick=()=>$('coverFile').click();$('coverFile').onchange=async e=>{if(e.target.files[0]){selectedImage=await imageToDataURL(e.target.files[0]);$('selectedCover').src=selectedImage;$('selectedCover').hidden=false}};
 $('addHistory').onclick=()=>addHist({date:new Date().toISOString().slice(0,10)});
 $('saveBtn').onclick=()=>{
