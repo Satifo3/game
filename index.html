@@ -29,6 +29,97 @@ label{display:block;color:var(--muted);font-size:12px;margin:12px 0 6px}.field{w
 .notice{background:#f0ece4;border:1px solid var(--line);padding:11px;border-radius:12px;color:#5e5a52;font-size:12px;margin:10px 0}.api{display:flex;gap:8px}.api input{flex:1}
 @media(max-width:600px){.app{padding-left:12px;padding-right:12px}.stats{grid-template-columns:1fr 1fr}.stats .stat:last-child{grid-column:1/-1}.row{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr);gap:16px 10px;padding:10px}.grid.listMode{display:block;padding:0}.hist{grid-template-columns:1fr 1fr}.hist button{grid-column:2}.brand{font-size:19px}}
 </style>
+
+<style id="retro-showcase-v2">
+/* Retro game shop glass showcase — shelf view only */
+.grid:not(.listMode){
+  position:relative;
+  display:grid !important;
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  align-items:start;
+  gap:12px 7px !important;
+  padding:15px 9px 28px !important;
+  border:4px solid #211f1b !important;
+  border-radius:17px !important;
+  background:
+    linear-gradient(108deg,rgba(255,255,255,.12) 0 3%,transparent 3% 30%,rgba(255,255,255,.045) 30% 34%,transparent 34%),
+    repeating-linear-gradient(0deg,transparent 0 226px,rgba(18,17,15,.95) 226px 231px,rgba(221,214,195,.35) 231px 233px,transparent 233px 238px),
+    linear-gradient(90deg,#3b342c 0,#715a44 3%,#85694e 50%,#715a44 97%,#3b342c 100%) !important;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.12),inset 0 14px 25px rgba(255,255,255,.08),inset 0 -20px 28px rgba(0,0,0,.28),0 7px 18px rgba(0,0,0,.17) !important;
+  overflow:hidden;
+}
+.grid:not(.listMode)::before{
+  content:"";position:absolute;inset:5px;z-index:4;pointer-events:none;border-radius:11px;
+  background:linear-gradient(113deg,rgba(255,255,255,.16),transparent 9% 62%,rgba(255,255,255,.04) 68%,transparent 76%);
+}
+.grid:not(.listMode)::after{
+  content:"";height:8px !important;grid-column:1/-1 !important;
+  background:linear-gradient(#181715,#464039) !important;border-radius:2px !important;
+  box-shadow:0 3px 0 rgba(255,255,255,.17),0 7px 10px rgba(0,0,0,.38) !important;
+}
+.grid:not(.listMode) .card{
+  min-width:0 !important;margin:0 !important;border-radius:6px !important;
+  border:1px solid rgba(230,224,211,.9) !important;
+  background:#f7f2e6 !important;box-shadow:0 5px 8px rgba(0,0,0,.38) !important;
+  transform:none !important;overflow:hidden !important;
+}
+.grid:not(.listMode) .card:hover{transform:none !important}
+.grid:not(.listMode) .cover{
+  width:100% !important;aspect-ratio:3/4 !important;
+  background-size:cover !important;background-position:center !important;
+  border-bottom:1px solid #d4ccbd;
+}
+.grid:not(.listMode) .cardbody{
+  padding:6px 5px 7px !important;
+  min-height:82px !important;
+  background:linear-gradient(180deg,#fffdf7,#eee7d8) !important;
+}
+.grid:not(.listMode) .title{
+  min-height:2.5em !important;margin:0 !important;font-size:10.5px !important;
+  line-height:1.24 !important;font-weight:900 !important;letter-spacing:-.025em !important;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.grid:not(.listMode) .meta{
+  margin-top:4px !important;font-size:8.3px !important;line-height:1.2 !important;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#6c675f !important;
+}
+.grid:not(.listMode) .price{
+  margin-top:5px !important;font-size:12.5px !important;line-height:1.05 !important;
+  font-weight:950 !important;color:#24211d !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.grid:not(.listMode) .badge{
+  top:4px !important;left:4px !important;padding:3px 5px !important;border-radius:4px !important;
+  font-size:8px !important;background:#fffbe9e8 !important;border:1px solid #c8bfac !important;
+  box-shadow:1px 2px 4px rgba(0,0,0,.22) !important;
+}
+@media(max-width:700px){
+ .grid:not(.listMode){grid-template-columns:repeat(4,minmax(0,1fr)) !important;gap:10px 5px !important;padding:13px 7px 24px !important}
+ .grid:not(.listMode) .cardbody{padding:5px 4px 6px !important;min-height:78px !important}
+ .grid:not(.listMode) .title{font-size:9.7px !important}
+ .grid:not(.listMode) .meta{font-size:7.7px !important}
+ .grid:not(.listMode) .price{font-size:11.5px !important}
+}
+</style>
+
+
+<style id="game-rating-v1">
+.rating-field select{font-weight:800}
+.rank-badge{
+ position:absolute;right:5px;top:5px;z-index:3;
+ min-width:25px;height:25px;padding:0 6px;
+ display:grid;place-items:center;
+ border-radius:5px;border:1px solid rgba(255,255,255,.78);
+ background:#1f1d19;color:#fff;
+ font-size:13px;font-weight:950;line-height:1;
+ box-shadow:0 2px 5px rgba(0,0,0,.28);
+}
+.grid:not(.listMode) .rank-badge{right:4px;top:4px;min-width:21px;height:21px;padding:0 4px;font-size:11px}
+.rank-S{background:linear-gradient(145deg,#332300,#b98200);color:#fff7c8}
+.rank-A{background:linear-gradient(145deg,#25292d,#777f86)}
+.rank-B{background:linear-gradient(145deg,#5a2e15,#a9693e)}
+.rank-C{background:#494844}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -63,6 +154,7 @@ label{display:block;color:var(--muted);font-size:12px;margin:12px 0 6px}.field{w
 <div class="row"><div><label>ステータス</label><select class="field" id="fStatus"><option value="owned">所持</option><option value="wish">欲しい</option></select></div><div><label>パッケージ / DL</label><select class="field" id="fFormat"><option>パッケージ</option><option>ダウンロード</option></select></div></div>
 <div class="row"><div><label>購入価格</label><input class="field" id="fBuyPrice" type="number" inputmode="numeric"></div><div><label>購入日</label><input class="field" id="fBuyDate" type="date"></div></div>
 <div class="row"><div><label>購入店</label><input class="field" id="fShop"></div><div><label>状態</label><select class="field" id="fCondition"><option>中古</option><option>新品</option><option>未設定</option></select></div></div>
+<div><label>評価ランク</label><select class="field" id="fRating"><option value="">未評価</option><option value="S">S</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></div>
 <label>見つけた価格の履歴</label><div id="history" class="history"></div><button class="btn" id="addHistory">＋ 価格履歴</button>
 <label>メモ</label><textarea class="field" id="fMemo" rows="3"></textarea>
 <div style="display:flex;gap:8px;margin-top:18px"><button class="btn primary" id="saveBtn" style="flex:1">登録する</button><button class="btn danger" id="deleteBtn" hidden>削除</button></div>
@@ -71,9 +163,9 @@ label{display:block;color:var(--muted);font-size:12px;margin:12px 0 6px}.field{w
 <dialog id="settingsDialog">
 <div class="modalhead"><b>設定・バックアップ</b><button class="iconbtn" onclick="$('settingsDialog').close()">✕</button></div>
 <div class="modalbody">
-<div class="notice"><b>標準検索：</b>日本語Wikipedia / Wikimedia Commons（APIキー不要）<br>タイトルから日本語記事・発売情報・価格表記・複数画像候補をアプリ内検索します。取得できない項目は空欄のままにし、推測値は保存しません。</div><label>楽天ウェブサービス（推奨・日本国内ゲーム検索）</label>
+<div class="notice"><b>標準検索：</b>日本語Wikipedia / Wikimedia Commons（APIキー不要）<br>タイトルから日本語記事・発売情報・価格表記・複数画像候補をアプリ内検索します。取得できない項目は空欄のままにし、推測値は保存しません。</div><label>楽天連携（任意・補助）</label>
 <div class="row"><input class="field" id="rakutenAppId" placeholder="楽天 Application ID"><input class="field" id="rakutenAccessKey" type="password" placeholder="楽天 Access Key"></div>
-<button class="btn" id="saveRakuten" style="margin-top:8px">国内ゲーム検索設定を保存</button>
+<button class="btn" id="saveRakuten" style="margin-top:8px">楽天補助検索設定を保存</button>
 <div class="notice"><b>日本語検索が標準です。</b>「ファイナルファンタジー」「ポケットモンスター」など日本語のまま検索します。楽天ブックスのゲームタイトル・対応機種・発売元・JAN・価格・発売日・商品画像を利用します。未設定時にWikipedia等へ切り替える処理は使用しません。</div><label>Brave Search APIキー（推奨・Web画像検索）</label><div class="api"><input class="field" id="braveKey" type="password" placeholder="高精度なWeb画像検索に使用"><button class="btn" id="saveBrave">保存</button></div><div class="notice">設定すると、タイトル＋選択した版＋機種＋「日本版 パッケージ box art」でWeb画像検索し、アプリ内に候補を表示します。日本語・日本向け検索を優先します。</div><label>MobyGames APIキー（任意・高精度パッケージ検索）</label><div class="api"><input class="field" id="mobyKey" type="password" placeholder="未設定でも使用できます"><button class="btn" id="saveMoby">保存</button></div><div class="notice">設定すると、パッケージ画像検索をMobyGamesの「Japan / Front Cover / 選択機種」優先へ切り替えます。未設定時は無料標準検索を使います。</div>
 <button class="btn" id="exportBtn">バックアップを書き出す</button>
 <button class="btn" id="importBtn">バックアップを読み込む</button>
@@ -106,19 +198,21 @@ function render(){
  $('ownedCount').textContent=db.games.filter(g=>g.status==='owned').length;
  $('wishCount').textContent=db.games.filter(g=>g.status==='wish').length;
  $('totalPrice').textContent=yen(db.games.filter(g=>g.status==='owned').reduce((s,g)=>s+Number(g.buyPrice||0),0));
- $('grid').innerHTML=games.length?games.map(g=>`<article class="card" onclick="openEdit('${g.id}')"><div class="badge">${g.status==='owned'?'所持':'欲しい'}</div><div class="cover" style="${g.image?`background-image:url('${g.image}')`:''}">${g.image?'':'NO IMAGE'}</div><div class="cardbody"><div class="title">${esc(g.title)}</div><div class="meta">${esc(platformName(g))}${g.release?' · '+esc(g.release):''}</div><div class="price">${g.status==='owned'?(g.buyPrice?yen(g.buyPrice):'価格未登録'):(g.history?.length?'発見 '+yen(g.history[g.history.length-1].price):'価格未登録')}</div></div></article>`).join(''):'<div class="empty">まだゲームが登録されていません。<br>「＋ 登録」から追加できます。</div>';
+ $('grid').innerHTML=games.length?games.map(g=>`<article class="card" onclick="openEdit('${g.id}')">${g.rating?`<span class="rank-badge rank-${g.rating}">${g.rating}</span>`:''}<div class="badge">${g.status==='owned'?'所持':'欲しい'}</div><div class="cover" style="${g.image?`background-image:url('${g.image}')`:''}">${g.image?'':'NO IMAGE'}</div><div class="cardbody"><div class="title">${esc(g.title)}</div><div class="meta">${esc(platformName(g))}${g.release?' · '+esc(g.release):''}</div><div class="price">${g.status==='owned'?(g.buyPrice?yen(g.buyPrice):'価格未登録'):(g.history?.length?'発見 '+yen(g.history[g.history.length-1].price):'価格未登録')}</div></div></article>`).join(''):'<div class="empty">まだゲームが登録されていません。<br>「＋ 登録」から追加できます。</div>';
  const p=[...new Set(db.games.map(g=>g.platform).filter(Boolean))].sort(); $('filterPlatform').innerHTML='<option value="">すべての機種</option>'+p.map(x=>`<option>${esc(x)}</option>`).join('');
 }
 function resetForm(){
  editingId=null; selectedImage=''; rawgGame=null; $('modalTitle').textContent='ゲームを登録'; $('results').innerHTML=''; $('selectedCover').hidden=true;
- ['fTitle','fRelease','fPublisher','fRetail','fRetailPreTax','fBuyPrice','fBuyDate','fShop','fMemo'].forEach(id=>$(id).value=''); fillPlatformSelect(); setEditionChoices([]);
+ ['fTitle','fRelease','fPublisher','fRetail','fRetailPreTax','fBuyPrice','fBuyDate','fShop','fMemo'].forEach(id=>$(id).value=''); fillPlatformSelect(); setEditionChoices([]); if($('fRating'))$('fRating').value='';
  $('fStatus').value='owned'; $('fFormat').value='パッケージ'; $('fCondition').value='中古'; $('history').innerHTML=''; $('deleteBtn').hidden=true; $('saveBtn').textContent='登録する';
 }
 function addHist(v={}){$('history').insertAdjacentHTML('beforeend',`<div class="hist"><input class="field hp" type="number" inputmode="numeric" placeholder="価格" value="${esc(v.price||'')}"><input class="field hs" placeholder="店" value="${esc(v.shop||'')}"><input class="field hd" type="date" value="${esc(v.date||'')}"><button class="btn" onclick="this.parentElement.remove()">削除</button></div>`)}
 function openEdit(id){
  const g=db.games.find(x=>x.id===id); if(!g)return; resetForm(); editingId=id; $('modalTitle').textContent='ゲーム詳細'; selectedImage=g.image||'';
  if(selectedImage){$('selectedCover').src=selectedImage;$('selectedCover').hidden=false}
- $('fTitle').value=g.title||'';setEditionChoices(g.edition?[g.edition]:[],g.edition||'');fillPlatformSelect(commonPlatforms,g.platform||'');$('fRelease').value=g.release||'';$('fPublisher').value=cleanPublisher(g.publisher||'');$('fRetail').value=g.retail||'';$('fRetailPreTax').value=g.retailPreTax||'';$('fStatus').value=g.status||'owned';$('fFormat').value=g.format||'パッケージ';$('fBuyPrice').value=g.buyPrice||'';$('fBuyDate').value=g.buyDate||'';$('fShop').value=g.shop||'';$('fCondition').value=g.condition||'未設定';$('fMemo').value=g.memo||'';(g.history||[]).forEach(addHist);$('deleteBtn').hidden=false;$('saveBtn').textContent='更新する';$('editDialog').showModal();
+ $('fTitle').value=g.title||'';
+ if($('fRating'))$('fRating').value=g.rating||'';
+ setEditionChoices(g.edition?[g.edition]:[],g.edition||'');fillPlatformSelect(commonPlatforms,g.platform||'');$('fRelease').value=g.release||'';$('fPublisher').value=cleanPublisher(g.publisher||'');$('fRetail').value=g.retail||'';$('fRetailPreTax').value=g.retailPreTax||'';$('fStatus').value=g.status||'owned';$('fFormat').value=g.format||'パッケージ';$('fBuyPrice').value=g.buyPrice||'';$('fBuyDate').value=g.buyDate||'';$('fShop').value=g.shop||'';$('fCondition').value=g.condition||'未設定';$('fMemo').value=g.memo||'';(g.history||[]).forEach(addHist);$('deleteBtn').hidden=false;$('saveBtn').textContent='更新する';$('editDialog').showModal();
 }
 
 function fillPlatformSelect(list=commonPlatforms,selected=''){
@@ -211,30 +305,113 @@ function guessEditionFromTitle(t){
  if(/best|廉価|the best/i.test(t))return '廉価版 / Best版';
  return '通常版 / 初期版';
 }
+const jpSearchAliases=[
+ ['ファイナルファンタジー','Final Fantasy'],['ドラゴンクエスト','Dragon Quest'],['ドラクエ','Dragon Quest'],
+ ['ポケットモンスター','Pokemon'],['ポケモン','Pokemon'],['ゼルダの伝説','The Legend of Zelda'],
+ ['スーパーマリオ','Super Mario'],['マリオ','Mario'],['バイオハザード','Resident Evil'],
+ ['龍が如く','Yakuza'],['モンスターハンター','Monster Hunter'],['モンハン','Monster Hunter'],
+ ['ペルソナ','Persona'],['キングダム ハーツ','Kingdom Hearts'],['キングダムハーツ','Kingdom Hearts'],
+ ['メタルギア','Metal Gear'],['デビル メイ クライ','Devil May Cry'],['デビルメイクライ','Devil May Cry'],
+ ['どうぶつの森','Animal Crossing'],['大乱闘スマッシュブラザーズ','Super Smash Bros'],
+ ['星のカービィ','Kirby'],['ロックマン','Mega Man'],['逆転裁判','Ace Attorney'],
+ ['クロノ・トリガー','Chrono Trigger'],['クロノトリガー','Chrono Trigger']
+];
+function internalSearchQuery(q){
+ let x=String(q||'').normalize('NFKC');
+ for(const [jp,en] of jpSearchAliases)if(x.includes(jp))x=x.replace(jp,en);
+ // Japanese full-width/kanji numerals commonly used for FF/series searches
+ const nums=[['１６','XVI'],['１５','XV'],['１４','XIV'],['１３','XIII'],['１２','XII'],['１１','XI'],['１０','X'],['９','IX'],['８','VIII'],['７','VII'],['６','VI'],['５','V'],['４','IV'],['３','III'],['２','II']];
+ for(const [a,b] of nums)x=x.replaceAll(a,b);
+ return x;
+}
+async function callGameGateway(query){
+ const body={jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'search_games',arguments:{query,page_size:30}}};
+ const r=await fetch('https://gateway.pipeworx.io/rawg/mcp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ if(!r.ok)throw new Error('HTTP '+r.status);
+ const d=await r.json();
+ // MCP gateways may return JSON directly or JSON embedded in content[].text.
+ let payload=d?.result?.structuredContent||d?.result;
+ if(payload?.content){
+  for(const c of payload.content||[]){
+   if(c.type==='text'&&c.text){try{const z=JSON.parse(c.text);if(z){payload=z;break}}catch(e){}}
+  }
+ }
+ const arr=payload?.games||payload?.results||payload?.data||[];
+ return Array.isArray(arr)?arr:[];
+}
 async function searchGames(){
- const q=$('gameSearch').value.trim();if(!q)return;
+ const original=$('gameSearch').value.trim();if(!original)return;
+ $('results').innerHTML='';$('searchNotice').textContent=`「${original}」をゲームデータベースで検索中…`;
+ let games=[];
+ try{
+  games=await callGameGateway(original);
+  if(!games.length){
+   const alt=internalSearchQuery(original);
+   if(alt!==original)games=await callGameGateway(alt);
+  }
+ }catch(e){
+  $('searchNotice').textContent='ゲーム検索サーバーへ接続できませんでした。通信状態を確認してもう一度検索してください。';
+  return;
+ }
+ if(!games.length){$('searchNotice').textContent=`「${original}」に一致するゲームが見つかりませんでした。`;return}
+ games=rankGameRecords(games,original);
+ showGameRecords(games,original);
+}
+function rankGameRecords(games,original){
+ const alt=normalizeJP(internalSearchQuery(original)),oq=normalizeJP(original),seen=new Set();
+ return games.filter(g=>{
+  const name=String(g.name||g.title||'').trim(),id=String(g.id||name);
+  if(!name||seen.has(id))return false;seen.add(id);return true;
+ }).map(g=>{
+  const n=normalizeJP(g.name||g.title||'');let score=0;
+  if(n===oq||n===alt)score+=100;if(n.startsWith(oq)||n.startsWith(alt))score+=50;
+  if(n.includes(oq)||n.includes(alt))score+=30;if(g.released||g.release_date)score+=5;
+  if((g.platforms||[]).length)score+=5;return {...g,_score:score};
+ }).sort((a,b)=>b._score-a._score).slice(0,30);
+}
+function platformNamesFromGame(g){
+ const a=g.platforms||[];
+ return a.map(x=>typeof x==='string'?x:(x.platform?.name||x.name||'')).filter(Boolean);
+}
+function mapGamePlatform(name){
+ const h=String(name||'');
+ const pairs=[
+ ['PS5',/playstation 5/i],['PS4',/playstation 4/i],['PS3',/playstation 3/i],['PS2',/playstation 2/i],
+ ['PS1',/^playstation$/i],['PS Vita',/playstation vita/i],['PSP',/psp|playstation portable/i],
+ ['Switch 2',/nintendo switch 2/i],['Switch',/^nintendo switch$/i],['3DS',/nintendo 3ds/i],
+ ['DS',/nintendo ds/i],['GBA',/game boy advance/i],['GBC',/game boy color/i],['GB',/^game boy$/i],
+ ['SFC',/super nintendo|snes/i],['N64',/nintendo 64/i],['GC',/gamecube/i],['Wii U',/wii u/i],['Wii',/^wii$/i],
+ ['Xbox Series X|S',/xbox series/i],['Xbox One',/xbox one/i],['Xbox 360',/xbox 360/i],['Xbox',/^xbox$/i],
+ ['Steam / PC',/pc|windows|steam/i],['Dreamcast',/dreamcast/i],['SEGA Saturn',/saturn/i]
+ ];for(const [v,r] of pairs)if(r.test(h))return v;return '';
+}
+function showGameRecords(games,original){
+ $('searchNotice').textContent=`${games.length}件見つかりました。登録したい作品・版を選んでください。`;
+ $('results').innerHTML=games.map(g=>{
+  const name=g.name||g.title||'',img=g.background_image||g.image||g.cover||'',rel=g.released||g.release_date||'';
+  const p=platformNamesFromGame(g).slice(0,5).join(' / ');
+  return `<button class="result">${img?`<img src="${img}" alt="" loading="lazy">`:`<div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee;color:#777">GAME</div>`}<div>${esc(name)}<small>${esc([rel,p].filter(Boolean).join(' · '))}</small></div></button>`;
+ }).join('');
+ [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectGameRecord(games[i],original));
+}
+function selectGameRecord(g,original){
+ const dbTitle=g.name||g.title||original;
+ // Preserve Japanese wording the user searched when it clearly names the selected series;
+ // otherwise use the database title so editions remain distinguishable.
+ const alt=normalizeJP(internalSearchQuery(original)),dn=normalizeJP(dbTitle);
+ const displayTitle=(dn===alt||dn.startsWith(alt))?original:dbTitle;
+ $('fTitle').value=displayTitle;
+ const ed=guessEditionFromTitle(dbTitle);setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);
+ const ps=platformNamesFromGame(g).map(mapGamePlatform).filter(Boolean);
+ fillPlatformSelect(ps.length?[...new Set(ps)]:commonPlatforms,ps[0]||'');
+ const rel=g.released||g.release_date||'';
+ $('fRelease').value=/^\d{4}-\d{2}-\d{2}$/.test(rel)?rel:'';
+ $('fPublisher').value=cleanPublisher(g.publisher||g.publishers?.[0]?.name||'');
+ $('fRetail').value='';$('fRetailPreTax').value='';
+ const img=g.background_image||g.image||g.cover||'';selectedImage=img;
+ if(img){$('selectedCover').src=img;$('selectedCover').hidden=false}else{$('selectedCover').hidden=true;$('selectedCover').removeAttribute('src')}
  $('results').innerHTML='';
- const appId=localStorage.getItem('gameStock_rakuten_appid')||'',access=localStorage.getItem('gameStock_rakuten_accesskey')||'';
- if(!appId||!access){$('searchNotice').innerHTML='右上の「設定」で楽天 Application ID / Access Key を保存してください。<br><b>Wikipedia/MADBへの自動切替は廃止しました。</b>';return}
- $('searchNotice').textContent=`「${q}」を国内ゲーム商品から検索中…`;let all=[];
- try{const u='https://openapi.rakuten.co.jp/services/api/BooksGame/Search/20170404?'+new URLSearchParams({format:'json',formatVersion:'2',applicationId:appId,accessKey:access,title:q,hits:'30',outOfStockFlag:'1'});const r=await fetch(u);if(r.ok){const d=await r.json();all.push(...rakutenItems(d).map(x=>({...x,_engine:'楽天ブックス',_structured:true})))}}catch(e){}
- try{const u='https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701?'+new URLSearchParams({format:'json',formatVersion:'2',applicationId:appId,accessKey:access,keyword:q,hits:'30',availability:'0',imageFlag:'1',field:'0'});const r=await fetch(u);if(r.ok){const d=await r.json();for(const z of(d.items||d.Items||[])){const x=z.Item||z;all.push({title:x.itemName||'',itemName:x.itemName||'',itemPrice:x.itemPrice||'',largeImageUrl:(x.mediumImageUrls&&x.mediumImageUrls[0])||(x.smallImageUrls&&x.smallImageUrls[0])||'',_engine:'楽天市場',_structured:false})}}}catch(e){}
- all=rankDomesticProducts(all,q);if(!all.length){$('searchNotice').textContent='国内商品検索で見つかりませんでした。タイトルを少し短くして再検索してください。';return}showDomesticProducts(all);
-}
-function rankDomesticProducts(items,q){
- const nq=normalizeJP(q),junk=/攻略|サントラ|soundtrack|フィギュア|アクリル|缶バッジ|カード|攻略本|設定資料|ぬいぐるみ|ケース|カバー|保護|ケーブル|コントローラー/i,seen=new Set();
- return items.filter(x=>{const t=String(x.title||x.itemName||''),nt=normalizeJP(t);if(!t||junk.test(t)||(!nt.includes(nq)&&!nq.includes(nt)))return false;const k=nt+'|'+(x.hardware||'');if(seen.has(k))return false;seen.add(k);return true}).map(x=>{const t=normalizeJP(x.title||x.itemName||'');let n=(t===nq?100:0)+(t.startsWith(nq)?50:0)+(x._structured?30:0)+(x.hardware?20:0)+(x.largeImageUrl?5:0);return {...x,_score:n}}).sort((a,b)=>b._score-a._score).slice(0,40);
-}
-function showDomesticProducts(items){
- $('searchNotice').textContent=`国内商品検索で${items.length}件。登録したい版・機種を選んでください。`;
- $('results').innerHTML=items.map(g=>{const t=g.title||g.itemName||'',img=g.largeImageUrl||g.mediumImageUrl||'',price=g.itemPrice?`¥${Number(g.itemPrice).toLocaleString('ja-JP')}`:'';return `<button class="result">${img?`<img src="${img}" alt="" loading="lazy">`:`<div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee">GAME</div>`}<div>${esc(t)}<small>${esc([g._engine,g.hardware||'',price].filter(Boolean).join(' · '))}</small></div></button>`}).join('');
- [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectDomesticProduct(items[i]));
-}
-function selectDomesticProduct(g){
- if(g._structured){selectRakutenGame(g);return}
- const title=g.title||g.itemName||'';$('fTitle').value=title;const ed=guessEditionFromTitle(title);setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);fillPlatformSelect(commonPlatforms);const pf=mapStructuredHardware(title);if(pf)$('fPlatform').value=pf;
- $('fRelease').value='';$('fPublisher').value='';$('fRetail').value='';$('fRetailPreTax').value='';const img=g.largeImageUrl||g.mediumImageUrl||'';selectedImage=img;if(img){$('selectedCover').src=img;$('selectedCover').hidden=false}else $('selectedCover').hidden=true;
- $('results').innerHTML='';$('searchNotice').textContent='楽天市場の商品を選択しました。現在価格を発売時定価として誤登録しないため、定価欄は空欄にしています。';
+ $('searchNotice').textContent='ゲームDBの同一レコードからタイトル・発売日・対応機種を反映しました。機種を選んで登録できます。';
 }
 function showRakutenGames(items,q){
  const nq=normalizeJP(q);
@@ -430,7 +607,7 @@ $('saveBtn').onclick=()=>{
  const title=$('fTitle').value.trim();if(!title){alert('タイトルを入力してください');return}
  const history=[...$('history').querySelectorAll('.hist')].map(x=>({price:x.querySelector('.hp').value,shop:x.querySelector('.hs').value,date:x.querySelector('.hd').value})).filter(x=>x.price||x.shop||x.date);
  const old=db.games.find(g=>g.id===editingId);
- const g={id:editingId||crypto.randomUUID(),created:old?.created||Date.now(),title,edition:$('fEdition').value,platform:$('fPlatform').value,release:$('fRelease').value,publisher:$('fPublisher').value.trim(),retail:$('fRetail').value,retailPreTax:$('fRetailPreTax').value,status:$('fStatus').value,format:$('fFormat').value,buyPrice:$('fBuyPrice').value,buyDate:$('fBuyDate').value,shop:$('fShop').value.trim(),condition:$('fCondition').value,memo:$('fMemo').value.trim(),image:selectedImage,history,rawgId:rawgGame?.id||old?.rawgId||null};
+ const g={id:editingId||crypto.randomUUID(),created:old?.created||Date.now(),title,edition:$('fEdition').value,platform:$('fPlatform').value,release:$('fRelease').value,publisher:$('fPublisher').value.trim(),retail:$('fRetail').value,retailPreTax:$('fRetailPreTax').value,status:$('fStatus').value,format:$('fFormat').value,buyPrice:$('fBuyPrice').value,buyDate:$('fBuyDate').value,shop:$('fShop').value.trim(),condition:$('fCondition').value,rating:$('fRating')?$('fRating').value:'',memo:$('fMemo').value.trim(),image:selectedImage,history,rawgId:rawgGame?.id||old?.rawgId||null};
  if(editingId)db.games=db.games.map(x=>x.id===editingId?g:x);else db.games.push(g);persist();$('editDialog').close();render();
 };
 $('deleteBtn').onclick=()=>{if(confirm('このゲームを削除しますか？')){db.games=db.games.filter(g=>g.id!==editingId);persist();$('editDialog').close();render()}};
