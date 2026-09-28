@@ -74,7 +74,7 @@ label{display:block;color:var(--muted);font-size:12px;margin:12px 0 6px}.field{w
 <div class="notice"><b>標準検索：</b>日本語Wikipedia / Wikimedia Commons（APIキー不要）<br>タイトルから日本語記事・発売情報・価格表記・複数画像候補をアプリ内検索します。取得できない項目は空欄のままにし、推測値は保存しません。</div><label>楽天ウェブサービス（推奨・日本国内ゲーム検索）</label>
 <div class="row"><input class="field" id="rakutenAppId" placeholder="楽天 Application ID"><input class="field" id="rakutenAccessKey" type="password" placeholder="楽天 Access Key"></div>
 <button class="btn" id="saveRakuten" style="margin-top:8px">国内ゲーム検索設定を保存</button>
-<div class="notice"><b>日本語検索が標準です。</b>「ファイナルファンタジー」「ポケットモンスター」など日本語のまま検索します。楽天ブックスのゲームタイトル・対応機種・発売元・JAN・価格・発売日・商品画像を利用します。未設定時はMADB/Wikipedia系の国内データ検索へ自動フォールバックします。</div><label>Brave Search APIキー（推奨・Web画像検索）</label><div class="api"><input class="field" id="braveKey" type="password" placeholder="高精度なWeb画像検索に使用"><button class="btn" id="saveBrave">保存</button></div><div class="notice">設定すると、タイトル＋選択した版＋機種＋「日本版 パッケージ box art」でWeb画像検索し、アプリ内に候補を表示します。日本語・日本向け検索を優先します。</div><label>MobyGames APIキー（任意・高精度パッケージ検索）</label><div class="api"><input class="field" id="mobyKey" type="password" placeholder="未設定でも使用できます"><button class="btn" id="saveMoby">保存</button></div><div class="notice">設定すると、パッケージ画像検索をMobyGamesの「Japan / Front Cover / 選択機種」優先へ切り替えます。未設定時は無料標準検索を使います。</div>
+<div class="notice"><b>日本語検索が標準です。</b>「ファイナルファンタジー」「ポケットモンスター」など日本語のまま検索します。楽天ブックスのゲームタイトル・対応機種・発売元・JAN・価格・発売日・商品画像を利用します。未設定時にWikipedia等へ切り替える処理は使用しません。</div><label>Brave Search APIキー（推奨・Web画像検索）</label><div class="api"><input class="field" id="braveKey" type="password" placeholder="高精度なWeb画像検索に使用"><button class="btn" id="saveBrave">保存</button></div><div class="notice">設定すると、タイトル＋選択した版＋機種＋「日本版 パッケージ box art」でWeb画像検索し、アプリ内に候補を表示します。日本語・日本向け検索を優先します。</div><label>MobyGames APIキー（任意・高精度パッケージ検索）</label><div class="api"><input class="field" id="mobyKey" type="password" placeholder="未設定でも使用できます"><button class="btn" id="saveMoby">保存</button></div><div class="notice">設定すると、パッケージ画像検索をMobyGamesの「Japan / Front Cover / 選択機種」優先へ切り替えます。未設定時は無料標準検索を使います。</div>
 <button class="btn" id="exportBtn">バックアップを書き出す</button>
 <button class="btn" id="importBtn">バックアップを読み込む</button>
 <input type="file" id="importFile" accept="application/json" hidden>
@@ -213,22 +213,28 @@ function guessEditionFromTitle(t){
 }
 async function searchGames(){
  const q=$('gameSearch').value.trim();if(!q)return;
- $('searchNotice').textContent=`「${q}」を日本語タイトルで検索中…`;$('results').innerHTML='';
- const appId=localStorage.getItem('gameStock_rakuten_appid')||'';
- const access=localStorage.getItem('gameStock_rakuten_accesskey')||'';
- if(appId&&access){
-  try{
-   const u='https://openapi.rakuten.co.jp/services/api/BooksGame/Search/20170404?'+new URLSearchParams({
-    format:'json',formatVersion:'2',applicationId:appId,accessKey:access,title:q,hits:'30',booksGenreId:'006',outOfStockFlag:'1'
-   });
-   const r=await fetch(u);
-   if(r.ok){
-    const d=await r.json(),items=rakutenItems(d);
-    if(items.length){showRakutenGames(items,q);return}
-   }
-  }catch(e){}
- }
- await searchMADBGames(q);
+ $('results').innerHTML='';
+ const appId=localStorage.getItem('gameStock_rakuten_appid')||'',access=localStorage.getItem('gameStock_rakuten_accesskey')||'';
+ if(!appId||!access){$('searchNotice').innerHTML='右上の「設定」で楽天 Application ID / Access Key を保存してください。<br><b>Wikipedia/MADBへの自動切替は廃止しました。</b>';return}
+ $('searchNotice').textContent=`「${q}」を国内ゲーム商品から検索中…`;let all=[];
+ try{const u='https://openapi.rakuten.co.jp/services/api/BooksGame/Search/20170404?'+new URLSearchParams({format:'json',formatVersion:'2',applicationId:appId,accessKey:access,title:q,hits:'30',outOfStockFlag:'1'});const r=await fetch(u);if(r.ok){const d=await r.json();all.push(...rakutenItems(d).map(x=>({...x,_engine:'楽天ブックス',_structured:true})))}}catch(e){}
+ try{const u='https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701?'+new URLSearchParams({format:'json',formatVersion:'2',applicationId:appId,accessKey:access,keyword:q,hits:'30',availability:'0',imageFlag:'1',field:'0'});const r=await fetch(u);if(r.ok){const d=await r.json();for(const z of(d.items||d.Items||[])){const x=z.Item||z;all.push({title:x.itemName||'',itemName:x.itemName||'',itemPrice:x.itemPrice||'',largeImageUrl:(x.mediumImageUrls&&x.mediumImageUrls[0])||(x.smallImageUrls&&x.smallImageUrls[0])||'',_engine:'楽天市場',_structured:false})}}}catch(e){}
+ all=rankDomesticProducts(all,q);if(!all.length){$('searchNotice').textContent='国内商品検索で見つかりませんでした。タイトルを少し短くして再検索してください。';return}showDomesticProducts(all);
+}
+function rankDomesticProducts(items,q){
+ const nq=normalizeJP(q),junk=/攻略|サントラ|soundtrack|フィギュア|アクリル|缶バッジ|カード|攻略本|設定資料|ぬいぐるみ|ケース|カバー|保護|ケーブル|コントローラー/i,seen=new Set();
+ return items.filter(x=>{const t=String(x.title||x.itemName||''),nt=normalizeJP(t);if(!t||junk.test(t)||(!nt.includes(nq)&&!nq.includes(nt)))return false;const k=nt+'|'+(x.hardware||'');if(seen.has(k))return false;seen.add(k);return true}).map(x=>{const t=normalizeJP(x.title||x.itemName||'');let n=(t===nq?100:0)+(t.startsWith(nq)?50:0)+(x._structured?30:0)+(x.hardware?20:0)+(x.largeImageUrl?5:0);return {...x,_score:n}}).sort((a,b)=>b._score-a._score).slice(0,40);
+}
+function showDomesticProducts(items){
+ $('searchNotice').textContent=`国内商品検索で${items.length}件。登録したい版・機種を選んでください。`;
+ $('results').innerHTML=items.map(g=>{const t=g.title||g.itemName||'',img=g.largeImageUrl||g.mediumImageUrl||'',price=g.itemPrice?`¥${Number(g.itemPrice).toLocaleString('ja-JP')}`:'';return `<button class="result">${img?`<img src="${img}" alt="" loading="lazy">`:`<div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee">GAME</div>`}<div>${esc(t)}<small>${esc([g._engine,g.hardware||'',price].filter(Boolean).join(' · '))}</small></div></button>`}).join('');
+ [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectDomesticProduct(items[i]));
+}
+function selectDomesticProduct(g){
+ if(g._structured){selectRakutenGame(g);return}
+ const title=g.title||g.itemName||'';$('fTitle').value=title;const ed=guessEditionFromTitle(title);setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);fillPlatformSelect(commonPlatforms);const pf=mapStructuredHardware(title);if(pf)$('fPlatform').value=pf;
+ $('fRelease').value='';$('fPublisher').value='';$('fRetail').value='';$('fRetailPreTax').value='';const img=g.largeImageUrl||g.mediumImageUrl||'';selectedImage=img;if(img){$('selectedCover').src=img;$('selectedCover').hidden=false}else $('selectedCover').hidden=true;
+ $('results').innerHTML='';$('searchNotice').textContent='楽天市場の商品を選択しました。現在価格を発売時定価として誤登録しないため、定価欄は空欄にしています。';
 }
 function showRakutenGames(items,q){
  const nq=normalizeJP(q);
@@ -433,7 +439,7 @@ document.querySelectorAll('nav [data-view]').forEach(b=>b.onclick=()=>{currentVi
 $('shelfView').onclick=()=>{displayMode='shelf';localStorage.setItem('gameStock_view','shelf');render()};
 $('listView').onclick=()=>{displayMode='list';localStorage.setItem('gameStock_view','list');render()};
 $('settingsBtn').onclick=()=>{$('rakutenAppId').value=localStorage.getItem('gameStock_rakuten_appid')||'';$('rakutenAccessKey').value=localStorage.getItem('gameStock_rakuten_accesskey')||'';$('braveKey').value=localStorage.getItem('gameStock_brave_key')||'';$('mobyKey').value=localStorage.getItem('gameStock_moby_key')||'';$('settingsDialog').showModal()};
-$('saveRakuten').onclick=()=>{localStorage.setItem('gameStock_rakuten_appid',$('rakutenAppId').value.trim());localStorage.setItem('gameStock_rakuten_accesskey',$('rakutenAccessKey').value.trim());alert('国内ゲーム検索設定を保存しました')};
+$('saveRakuten').onclick=()=>{localStorage.setItem('gameStock_rakuten_appid',$('rakutenAppId').value.trim());localStorage.setItem('gameStock_rakuten_accesskey',$('rakutenAccessKey').value.trim());alert('楽天国内商品検索設定を保存しました')};
 $('saveBrave').onclick=()=>{localStorage.setItem('gameStock_brave_key',$('braveKey').value.trim());alert('Brave Search APIキーを端末内に保存しました')};
 $('saveMoby').onclick=()=>{localStorage.setItem('gameStock_moby_key',$('mobyKey').value.trim());alert('MobyGames APIキーを端末内に保存しました')};
 $('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='GAME_STOCK_backup.json';a.click();URL.revokeObjectURL(a.href)};
