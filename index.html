@@ -53,7 +53,7 @@ label{display:block;color:var(--muted);font-size:12px;margin:12px 0 6px}.field{w
 <div id="results" class="results"></div>
 <img id="selectedCover" class="selectedCover" hidden>
 <input type="file" id="coverFile" accept="image/*" hidden>
-<button class="btn" id="photoBtn" style="margin-top:10px">端末の写真からパッケージを選ぶ</button>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn primary" id="webCoverBtn">🔎 パッケージ画像を高精度検索</button><button class="btn" id="photoBtn">端末の写真から選ぶ</button></div>
 
 <div class="row"><div><label>タイトル</label><input class="field" id="fTitle"></div><div><label>版 / エディション</label><select class="field" id="fEdition"><option value="">通常版 / 初期版</option></select></div></div><div><label>機種</label><select class="field" id="fPlatform"></select></div>
 
@@ -71,7 +71,7 @@ label{display:block;color:var(--muted);font-size:12px;margin:12px 0 6px}.field{w
 <dialog id="settingsDialog">
 <div class="modalhead"><b>設定・バックアップ</b><button class="iconbtn" onclick="settingsDialog.close()">✕</button></div>
 <div class="modalbody">
-<div class="notice"><b>標準検索：</b>日本語Wikipedia / Wikimedia Commons（APIキー不要）<br>タイトルから日本語記事・発売情報・価格表記・複数画像候補をアプリ内検索します。取得できない項目は空欄のままにし、推測値は保存しません。</div><label>MobyGames APIキー（任意・高精度パッケージ検索）</label><div class="api"><input class="field" id="mobyKey" type="password" placeholder="未設定でも使用できます"><button class="btn" id="saveMoby">保存</button></div><div class="notice">設定すると、パッケージ画像検索をMobyGamesの「Japan / Front Cover / 選択機種」優先へ切り替えます。未設定時は無料標準検索を使います。</div>
+<div class="notice"><b>標準検索：</b>日本語Wikipedia / Wikimedia Commons（APIキー不要）<br>タイトルから日本語記事・発売情報・価格表記・複数画像候補をアプリ内検索します。取得できない項目は空欄のままにし、推測値は保存しません。</div><label>Brave Search APIキー（推奨・Web画像検索）</label><div class="api"><input class="field" id="braveKey" type="password" placeholder="高精度なWeb画像検索に使用"><button class="btn" id="saveBrave">保存</button></div><div class="notice">設定すると、タイトル＋選択した版＋機種＋「日本版 パッケージ box art」でWeb画像検索し、アプリ内に候補を表示します。日本語・日本向け検索を優先します。</div><label>MobyGames APIキー（任意・高精度パッケージ検索）</label><div class="api"><input class="field" id="mobyKey" type="password" placeholder="未設定でも使用できます"><button class="btn" id="saveMoby">保存</button></div><div class="notice">設定すると、パッケージ画像検索をMobyGamesの「Japan / Front Cover / 選択機種」優先へ切り替えます。未設定時は無料標準検索を使います。</div>
 <button class="btn" id="exportBtn">バックアップを書き出す</button>
 <button class="btn" id="importBtn">バックアップを読み込む</button>
 <input type="file" id="importFile" accept="application/json" hidden>
@@ -183,6 +183,9 @@ async function selectWikiResult(g){
   if(pub)$('fPublisher').value=cleanWikiText(pub.replace(/\[\[|\]\]/g,''));
   const retail=extractRetail(wt+' '+plain); if(retail)$('fRetail').value=retail;
  }catch(e){}
+ if(localStorage.getItem('gameStock_brave_key')){
+   const ok=await searchBraveCovers(); if(ok)return;
+ }
  if(localStorage.getItem('gameStock_moby_key')){
    const ok=await searchMobyCovers(g.title,$('fPlatform').value); if(ok)return;
  }
@@ -199,6 +202,28 @@ async function selectWikiResult(g){
  }catch(e){$('searchNotice').textContent='ゲーム情報を反映しました。画像候補の取得に失敗したため、端末画像も利用できます。'}
 }
 
+
+function coverQuery(){
+ const title=$('fTitle').value.trim(), ed=$('fEdition').value, pf=$('fPlatform').value;
+ return [title,ed&&ed!=='通常版 / 初期版'?ed:'',pf,'日本版','パッケージ','box art'].filter(Boolean).join(' ');
+}
+async function searchBraveCovers(){
+ const key=localStorage.getItem('gameStock_brave_key')||'';
+ if(!key){$('searchNotice').textContent='高精度Web画像検索には設定画面でBrave Search APIキーを保存してください。未設定のため、無料標準検索を使用します。';return false}
+ const q=coverQuery();$('searchNotice').textContent=`「${q}」でWeb画像検索中…`;$('results').innerHTML='';
+ try{
+  const r=await fetch('https://api.search.brave.com/res/v1/images/search?'+new URLSearchParams({q,count:'60',country:'JP',search_lang:'ja',safesearch:'strict',spellcheck:'true'}),{headers:{'Accept':'application/json','X-Subscription-Token':key}});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json(), seen=new Set();
+  let imgs=(d.results||[]).map(x=>({url:x.properties?.url||x.url||x.thumbnail?.src||'',thumb:x.thumbnail?.src||x.properties?.url||x.url||'',title:x.title||'画像候補',source:x.source||x.page_url||''}))
+   .filter(x=>x.url&&!seen.has(x.url)&&(seen.add(x.url),true)).slice(0,40);
+  if(!imgs.length)return false;
+  $('results').innerHTML=imgs.map((x,i)=>`<button class="result"><img src="${x.thumb}" alt="" loading="lazy"><div>${esc(x.title.slice(0,70))}<small>${esc(x.source||'Web画像検索')}</small></div></button>`).join('');
+  [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>{selectedImage=imgs[i].url;$('selectedCover').src=imgs[i].url;$('selectedCover').hidden=false;[...$('results').children].forEach(x=>x.style.outline='');b.style.outline='3px solid var(--accent)';$('searchNotice').textContent='この画像をパッケージとして選択しました。別の候補へ変更もできます。'});
+  $('searchNotice').textContent=`Web画像検索から${imgs.length}件取得しました。正しいパッケージをタップしてください。`;
+  return true;
+ }catch(e){$('searchNotice').textContent='高精度Web画像検索に失敗しました。APIキーまたは通信状態を確認してください。';return false}
+}
 async function searchMobyCovers(title,platform){
  const key=localStorage.getItem('gameStock_moby_key')||''; if(!key)return false;
  try{
@@ -221,11 +246,12 @@ async function searchMobyCovers(title,platform){
  }catch(e){return false}
 }
 $('fEdition').addEventListener('change',()=>{const e=$('fEdition').value;const current=$('fPlatform').value;fillPlatformSelect(platformsForEdition(e,[current]),current)});
-$('fPlatform').addEventListener('change',async()=>{if($('fTitle').value.trim()&&localStorage.getItem('gameStock_moby_key'))await searchMobyCovers($('fTitle').value.trim(),$('fPlatform').value)});
+$('fPlatform').addEventListener('change',()=>{if($('fTitle').value.trim())$('searchNotice').textContent='機種を変更しました。「パッケージ画像を高精度検索」で、この機種の画像候補に更新できます。'});
 function imageToDataURL(file){
  return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const max=900, scale=Math.min(1,max/im.width,max*1.4/im.height),c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);c.getContext('2d').drawImage(im,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',.84))};im.onerror=reject;im.src=fr.result};fr.onerror=reject;fr.readAsDataURL(file)})
 }
 $('addBtn').onclick=()=>{resetForm();editDialog.showModal()};$('searchBtn').onclick=searchGames;$('gameSearch').addEventListener('keydown',e=>{if(e.key==='Enter')searchGames()});
+$('webCoverBtn').onclick=async()=>{if(!(await searchBraveCovers())&&localStorage.getItem('gameStock_moby_key'))await searchMobyCovers($('fTitle').value.trim(),$('fPlatform').value)};
 $('photoBtn').onclick=()=>$('coverFile').click();$('coverFile').onchange=async e=>{if(e.target.files[0]){selectedImage=await imageToDataURL(e.target.files[0]);$('selectedCover').src=selectedImage;$('selectedCover').hidden=false}};
 $('addHistory').onclick=()=>addHist({date:new Date().toISOString().slice(0,10)});
 $('saveBtn').onclick=()=>{
@@ -240,7 +266,8 @@ document.querySelectorAll('nav [data-view]').forEach(b=>b.onclick=()=>{currentVi
 ['filterText','filterPlatform','sort'].forEach(id=>$(id).addEventListener(id==='filterText'?'input':'change',render));
 $('shelfView').onclick=()=>{displayMode='shelf';localStorage.setItem('gameStock_view','shelf');render()};
 $('listView').onclick=()=>{displayMode='list';localStorage.setItem('gameStock_view','list');render()};
-$('settingsBtn').onclick=()=>{$('mobyKey').value=localStorage.getItem('gameStock_moby_key')||'';settingsDialog.showModal()};
+$('settingsBtn').onclick=()=>{$('braveKey').value=localStorage.getItem('gameStock_brave_key')||'';$('mobyKey').value=localStorage.getItem('gameStock_moby_key')||'';settingsDialog.showModal()};
+$('saveBrave').onclick=()=>{localStorage.setItem('gameStock_brave_key',$('braveKey').value.trim());alert('Brave Search APIキーを端末内に保存しました')};
 $('saveMoby').onclick=()=>{localStorage.setItem('gameStock_moby_key',$('mobyKey').value.trim());alert('MobyGames APIキーを端末内に保存しました')};
 $('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='GAME_STOCK_backup.json';a.click();URL.revokeObjectURL(a.href)};
 $('importBtn').onclick=()=>$('importFile').click();$('importFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.games))throw 0;if(confirm('現在のデータをバックアップ内容で置き換えますか？')){db=d;persist();render();settingsDialog.close()}}catch(_){alert('正しいGAME STOCKバックアップではありません')}};r.readAsText(f)};
