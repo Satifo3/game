@@ -101,11 +101,11 @@ function render(){
  $('collectionTitle').textContent=currentView==='owned'?'MY COLLECTION':currentView==='wish'?'WISH LIST':'ゲーム棚';
  $('collectionSub').textContent=displayMode==='shelf'?'パッケージを眺めるコレクションビュー':'タイトル・機種・価格を確認するリストビュー';
  const q=$('filterText').value.trim().toLowerCase(), pf=$('filterPlatform').value;
- let games=db.games.filter(g=>(currentView==='all'||g.status===currentView)&&(!q||g.title.toLowerCase().includes(q))&&(!pf||g.platform===pf));
+ let games=db.games.filter(g=>(currentView==='all'||g.status===currentView)&&(!q||g.title.toLowerCase().includes(q))&&(!pf||g.platform===pf);
  const sort=$('sort').value; games.sort((a,b)=>sort==='title'?a.title.localeCompare(b.title,'ja'):sort==='priceDesc'?(b.buyPrice||0)-(a.buyPrice||0):b.created-a.created);
  $('ownedCount').textContent=db.games.filter(g=>g.status==='owned').length;
  $('wishCount').textContent=db.games.filter(g=>g.status==='wish').length;
- $('totalPrice').textContent=yen(db.games.filter(g=>g.status==='owned').reduce((s,g)=>s+Number(g.buyPrice||0),0));
+ $('totalPrice').textContent=yen(db.games.filter(g=>g.status==='owned').reduce((s,g)=>s+Number(g.buyPrice||0),0);
  $('grid').innerHTML=games.length?games.map(g=>`<article class="card" onclick="openEdit('${g.id}')"><div class="badge">${g.status==='owned'?'所持':'欲しい'}</div><div class="cover" style="${g.image?`background-image:url('${g.image}')`:''}">${g.image?'':'NO IMAGE'}</div><div class="cardbody"><div class="title">${esc(g.title)}</div><div class="meta">${esc(platformName(g))}${g.release?' · '+esc(g.release):''}</div><div class="price">${g.status==='owned'?(g.buyPrice?yen(g.buyPrice):'価格未登録'):(g.history?.length?'発見 '+yen(g.history[g.history.length-1].price):'価格未登録')}</div></div></article>`).join(''):'<div class="empty">まだゲームが登録されていません。<br>「＋ 登録」から追加できます。</div>';
  const p=[...new Set(db.games.map(g=>g.platform).filter(Boolean))].sort(); $('filterPlatform').innerHTML='<option value="">すべての機種</option>'+p.map(x=>`<option>${esc(x)}</option>`).join('');
 }
@@ -118,7 +118,7 @@ function addHist(v={}){$('history').insertAdjacentHTML('beforeend',`<div class="
 function openEdit(id){
  const g=db.games.find(x=>x.id===id); if(!g)return; resetForm(); editingId=id; $('modalTitle').textContent='ゲーム詳細'; selectedImage=g.image||'';
  if(selectedImage){$('selectedCover').src=selectedImage;$('selectedCover').hidden=false}
- $('fTitle').value=g.title||'';setEditionChoices(g.edition?[g.edition]:[],g.edition||'');fillPlatformSelect(commonPlatforms,g.platform||'');$('fRelease').value=g.release||'';$('fPublisher').value=g.publisher||'';$('fRetail').value=g.retail||'';$('fRetailPreTax').value=g.retailPreTax||'';$('fStatus').value=g.status||'owned';$('fFormat').value=g.format||'パッケージ';$('fBuyPrice').value=g.buyPrice||'';$('fBuyDate').value=g.buyDate||'';$('fShop').value=g.shop||'';$('fCondition').value=g.condition||'未設定';$('fMemo').value=g.memo||'';(g.history||[]).forEach(addHist);$('deleteBtn').hidden=false;$('saveBtn').textContent='更新する';editDialog.showModal();
+ $('fTitle').value=g.title||'';setEditionChoices(g.edition?[g.edition]:[],g.edition||'');fillPlatformSelect(commonPlatforms,g.platform||'');$('fRelease').value=g.release||'';$('fPublisher').value=cleanPublisher(g.publisher||'');$('fRetail').value=g.retail||'';$('fRetailPreTax').value=g.retailPreTax||'';$('fStatus').value=g.status||'owned';$('fFormat').value=g.format||'パッケージ';$('fBuyPrice').value=g.buyPrice||'';$('fBuyDate').value=g.buyDate||'';$('fShop').value=g.shop||'';$('fCondition').value=g.condition||'未設定';$('fMemo').value=g.memo||'';(g.history||[]).forEach(addHist);$('deleteBtn').hidden=false;$('saveBtn').textContent='更新する';editDialog.showModal();
 }
 
 function fillPlatformSelect(list=commonPlatforms,selected=''){
@@ -131,14 +131,14 @@ function setEditionChoices(items,selected=''){
  $('fEdition').innerHTML=uniq.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
  $('fEdition').value=selected&&uniq.includes(selected)?selected:uniq[0];
 }
-function inferEditions(title,text=''){
+function inferEditions(title){
+ const t=String(title||'');
  const out=[];
- const all=title+' '+text;
- if(/HD\s*Remaster|HDリマスター/i.test(all))out.push('HD Remaster');
- if(/Remaster|リマスター/i.test(all)&&!out.includes('HD Remaster'))out.push('Remaster');
- if(/Remake|リメイク/i.test(all))out.push('Remake');
- if(/International|インターナショナル/i.test(all))out.push('International');
- if(/廉価|Best|Greatest Hits|PlayStation Hits/i.test(all))out.push('廉価版 / Best版');
+ if(/HD\s*Remaster|HD\s*リマスター/i.test(t))out.push('HD Remaster');
+ else if(/Remaster|リマスター/i.test(t))out.push('Remaster');
+ else if(/Remake|リメイク/i.test(t))out.push('Remake');
+ if(/International|インターナショナル/i.test(t))out.push('International');
+ if(/Best|廉価|アルティメットヒッツ|PlayStation Hits|Greatest Hits/i.test(t))out.push('廉価版 / Best版');
  return out;
 }
 function platformsForEdition(edition,detected=[]){
@@ -147,6 +147,38 @@ function platformsForEdition(edition,detected=[]){
 }
 async function wikiJSON(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
 function cleanWikiText(t=''){return t.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}
+function detectOriginalPlatform(text){
+ const t=String(text||'').slice(0,1400);
+ const contexts=[];
+ for(const m of t.matchAll(/.{0,100}(?:発売|専用ソフト|対応機種|プラットフォーム).{0,100}/g))contexts.push(m[0]);
+ const src=contexts.slice(0,3).join(' ')||t.slice(0,500);
+ const ordered=[
+  ['PS1',/(?:PlayStation(?!\s*[2345])|プレイステーション(?![2345])|PS1\b)/i],
+  ['PS2',/(?:PlayStation\s*2|プレイステーション2|PS2\b)/i],
+  ['PS3',/(?:PlayStation\s*3|プレイステーション3|PS3\b)/i],
+  ['PS4',/(?:PlayStation\s*4|プレイステーション4|PS4\b)/i],
+  ['PS5',/(?:PlayStation\s*5|プレイステーション5|PS5\b)/i],
+  ['PSP',/\bPSP\b|PlayStation Portable|プレイステーション・ポータブル/i],
+  ['PS Vita',/PS\s*Vita|PlayStation Vita|プレイステーション・ヴィータ/i],
+  ['Switch 2',/Nintendo Switch 2|ニンテンドースイッチ2/i],
+  ['Switch',/Nintendo Switch|ニンテンドースイッチ/i],
+  ['3DS',/ニンテンドー3DS|Nintendo 3DS/i],
+  ['DS',/ニンテンドーDS|Nintendo DS/i],
+  ['GBA',/ゲームボーイアドバンス|Game Boy Advance/i],
+  ['GBC',/ゲームボーイカラー|Game Boy Color/i],
+  ['GB',/ゲームボーイ|Game Boy/i],
+  ['SFC',/スーパーファミコン|Super Famicom/i],
+  ['FC',/ファミリーコンピュータ|Famicom/i],
+  ['N64',/NINTENDO64|Nintendo 64/i],
+  ['GC',/ゲームキューブ|GameCube/i],
+  ['Wii U',/Wii U/i],['Wii',/\bWii\b/i],
+  ['SEGA Saturn',/セガサターン|Sega Saturn/i],
+  ['Dreamcast',/ドリームキャスト|Dreamcast/i],
+  ['Steam / PC',/\bSteam\b|Windows|PC版/i]
+ ];
+ for(const [name,re] of ordered)if(re.test(src))return name;
+ return '';
+}
 function detectPlatform(text=''){
  const map=[['PlayStation Vita','PS Vita'],['PlayStation Portable','PSP'],['PlayStation 5','PS5'],['PlayStation 4','PS4'],['PlayStation 3','PS3'],['PlayStation 2','PS2'],['PlayStation','PS1'],['Nintendo Switch 2','Switch 2'],['Nintendo Switch','Switch'],['ニンテンドー3DS','3DS'],['ニンテンドーDS','DS'],['ゲームボーイアドバンス','GBA'],['ゲームボーイカラー','GBC'],['ゲームボーイ','GB'],['Wii U','Wii U'],['Wii','Wii'],['ニンテンドーゲームキューブ','GC'],['NINTENDO64','N64'],['スーパーファミコン','SFC'],['ファミリーコンピュータ','FC'],['ドリームキャスト','Dreamcast'],['セガサターン','SEGA Saturn'],['メガドライブ','Mega Drive'],['Xbox Series','Xbox Series X|S'],['Xbox One','Xbox One'],['Xbox 360','Xbox 360']];
  return (map.find(x=>text.includes(x[0]))||[])[1]||'';
@@ -158,6 +190,13 @@ function extractRetail(text=''){
  ];
  for(const p of pats){const m=text.match(p);if(m){const n=Number(m[1].replace(/,/g,''));if(n>=500&&n<=200000)return n}}
  return '';
+}
+
+function cleanPublisher(v){
+ let x=String(v||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+ if(!x || x.length>60 || /。|、|タイトルロゴ|記事|作品|ゲーム内容|登場人物/.test(x))return '';
+ x=x.replace(/^(発売元|販売元|メーカー|パブリッシャー)\s*[:：]?\s*/,'');
+ return x.slice(0,60);
 }
 function normalizeJP(s){return String(s||'').normalize('NFKC').toLowerCase().replace(/\s+/g,' ').trim()}
 function rakutenItems(d){
@@ -195,7 +234,7 @@ function showRakutenGames(items,q){
  const nq=normalizeJP(q);
  items.sort((a,b)=>{
   const A=normalizeJP(a.title||a.itemName),B=normalizeJP(b.title||b.itemName);
-  return (B===nq)-(A===nq) || (B.startsWith(nq))-(A.startsWith(nq));
+  return (B===nq)-(A===nq) || (B.startsWith(nq))-(A.startsWith(nq);
  });
  $('searchNotice').textContent=`日本国内の商品データから${items.length}件見つかりました。登録する版・機種を選んでください。`;
  $('results').innerHTML=items.map((g,i)=>{
@@ -203,7 +242,7 @@ function showRakutenGames(items,q){
   const price=g.itemPrice?`¥${Number(g.itemPrice).toLocaleString('ja-JP')}`:'';
   return `<button class="result">${img?`<img src="${img}" alt="" loading="lazy">`:`<div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee;color:#888">NO IMAGE</div>`}<div>${esc(title)}<small>${esc(hw)} ${price}</small></div></button>`;
  }).join('');
- [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectRakutenGame(items[i]));
+ [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectRakutenGame(items[i]);
 }
 function selectRakutenGame(g){
  const title=g.title||g.itemName||'';
@@ -214,7 +253,7 @@ function selectRakutenGame(g){
   const m=String(g.salesDate).match(/((?:19|20)\d{2})[年\/.-](\d{1,2})[月\/.-](\d{1,2})/);
   if(m)$('fRelease').value=`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
  }
- $('fPublisher').value=g.label||'';
+ $('fPublisher').value=cleanPublisher(g.label);
  if(g.itemPrice)$('fRetail').value=g.itemPrice;
  const img=g.largeImageUrl||g.mediumImageUrl||g.smallImageUrl||'';
  if(img){selectedImage=img;$('selectedCover').src=img;$('selectedCover').hidden=false}
@@ -238,7 +277,7 @@ SELECT DISTINCT ?item ?label ?platform ?publisher ?date WHERE {
   if(r.ok){
    const d=await r.json(),rows=d.results?.bindings||[];
    if(rows.length){
-    const games=rows.map(x=>({title:x.label?.value||'',hardware:x.platform?.value||'',label:x.publisher?.value||'',salesDate:x.date?.value||'',itemUrl:x.item?.value||''}));
+    const games=rows.map(x=>({title:x.label?.value||'',hardware:x.platform?.value||'',label:x.publisher?.value||'',salesDate:x.date?.value||'',itemUrl:x.item?.value||''});
     showMADBGames(games);return;
    }
   }
@@ -248,12 +287,12 @@ SELECT DISTINCT ?item ?label ?platform ?publisher ?date WHERE {
 function showMADBGames(items){
  $('searchNotice').textContent=`メディア芸術データベースから${items.length}件見つかりました。日本語タイトルの候補を選んでください。`;
  $('results').innerHTML=items.map((g,i)=>`<button class="result"><div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee;color:#777;font-weight:800">GAME</div><div>${esc(g.title)}<small>${esc(g.hardware)} ${esc(g.label)}</small></div></button>`).join('');
- [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectDomesticFallback(items[i]));
+ [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectDomesticFallback(items[i]);
 }
 function selectDomesticFallback(g){
  $('fTitle').value=g.title||'';const ed=guessEditionFromTitle(g.title||'');setEditionChoices(ed==='通常版 / 初期版'?[]:[ed],ed);
- fillPlatformSelect(commonPlatforms,detectPlatform(g.hardware||''));
- $('fPublisher').value=g.label||'';
+ fillPlatformSelect(commonPlatforms,detectPlatform(g.hardware||'');
+ $('fPublisher').value=cleanPublisher(g.label);
  const m=String(g.salesDate||'').match(/((?:19|20)\d{2})[-\/年](\d{1,2})[-\/月](\d{1,2})/);
  if(m)$('fRelease').value=`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
  $('results').innerHTML='';$('searchNotice').textContent='ゲームを選択しました。パッケージ画像は「高精度検索」または端末写真から設定できます。';
@@ -263,30 +302,33 @@ async function searchWikipediaGamesJP(q){
   const queries=[q,q+' ゲーム',q+' コンピュータゲーム'];let pages=[];
   for(const query of queries){
    const api='https://ja.wikipedia.org/w/api.php?origin=*&action=query&format=json&generator=search&gsrnamespace=0&gsrlimit=12&gsrsearch='+encodeURIComponent(query)+'&prop=pageimages|extracts&piprop=thumbnail&pithumbsize=400&exintro=1&explaintext=1';
-   const d=await wikiJSON(api);pages.push(...Object.values(d.query?.pages||{}));
+   const d=await wikiJSON(api);pages.push(...Object.values(d.query?.pages||{});
   }
-  const seen=new Set();pages=pages.filter(x=>!seen.has(x.pageid)&&(seen.add(x.pageid),true));
+  const seen=new Set();pages=pages.filter(x=>!seen.has(x.pageid)&&(seen.add(x.pageid),true);
   const gameWords=/ゲーム|PlayStation|プレイステーション|Nintendo|任天堂|Xbox|Windows|Steam|スクウェア|エニックス|カプコン|セガ|バンダイ|ナムコ|コナミ/i;
   pages=pages.filter(x=>gameWords.test((x.title||'')+' '+(x.extract||''))).slice(0,20);
   if(!pages.length){$('searchNotice').textContent='日本語タイトルのゲーム候補が見つかりませんでした。';return}
   $('searchNotice').textContent='日本語の補助検索結果です。登録するゲームを選んでください。';
   $('results').innerHTML=pages.map(g=>`<button class="result">${g.thumbnail?`<img src="${g.thumbnail.source}" alt="" loading="lazy">`:`<div style="aspect-ratio:3/4;display:grid;place-items:center;background:#eee;color:#888">GAME</div>`}<div>${esc(g.title)}<small>${esc((g.extract||'').slice(0,80))}</small></div></button>`).join('');
-  [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectWikiResult(pages[i]));
+  [...$('results').querySelectorAll('.result')].forEach((b,i)=>b.onclick=()=>selectWikiResult(pages[i]);
  }catch(e){$('searchNotice').textContent='国内ゲーム検索に失敗しました。通信状態を確認してください。'}
 }
 async function selectWikiResult(g){
  rawgGame=null;$('fTitle').value=g.title||'';
- const initialEditions=inferEditions(g.title,g.extract||'');setEditionChoices(initialEditions,initialEditions[0]||'通常版 / 初期版');
+ const initialEditions=inferEditions(g.title);setEditionChoices(initialEditions,initialEditions[0]||'通常版 / 初期版');
  fillPlatformSelect(commonPlatforms);
  $('results').innerHTML='';$('searchNotice').textContent='発売情報・対応機種・日本版パッケージを確認中…';
  try{
   const parse=await wikiJSON('https://ja.wikipedia.org/w/api.php?origin=*&action=parse&format=json&page='+encodeURIComponent(g.title)+'&prop=wikitext|text');
   const wt=parse.parse?.wikitext?.['*']||'', plain=cleanWikiText(parse.parse?.text?.['*']||'');
-  const detected=detectPlatform(wt+' '+plain); const editions=inferEditions(g.title,wt+' '+plain);setEditionChoices(editions,editions[0]||'通常版 / 初期版');fillPlatformSelect(commonPlatforms,detected);
+  const editions=inferEditions(g.title);setEditionChoices(editions,editions.length?editions[0]:'通常版 / 初期版');
+ const lead=plain.slice(0,1200);
+ const detected=detectOriginalPlatform(lead);
+ fillPlatformSelect(commonPlatforms,detected);
   let dm=(wt+' '+plain).match(/(?:発売日|リリース)[^0-9]{0,80}((?:19|20)\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
   if(dm)$('fRelease').value=`${dm[1]}-${String(dm[2]).padStart(2,'0')}-${String(dm[3]).padStart(2,'0')}`;
   let pub=(wt.match(/\|\s*(?:発売元|販売元|publisher)\s*=\s*([^\n|]+)/i)||[])[1];
-  if(pub)$('fPublisher').value=cleanWikiText(pub.replace(/\[\[|\]\]/g,''));
+  if(pub)$('fPublisher').value=cleanPublisher(cleanWikiText(pub.replace(/\[\[|\]\]/g,''));
   const retail=extractRetail(wt+' '+plain); if(retail)$('fRetail').value=retail;
  }catch(e){}
  if(localStorage.getItem('gameStock_brave_key')){
@@ -298,7 +340,7 @@ async function selectWikiResult(g){
  try{
   const iq='intitle:"'+g.title.replace(/"/g,'')+'" (cover OR box OR package OR パッケージ)';
   const c=await wikiJSON('https://commons.wikimedia.org/w/api.php?origin=*&action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=18&gsrsearch='+encodeURIComponent(iq)+'&prop=imageinfo&iiprop=url&iiurlwidth=500');
-  let imgs=Object.values(c.query?.pages||{}).map(x=>({title:x.title,url:x.imageinfo?.[0]?.thumburl||x.imageinfo?.[0]?.url})).filter(x=>x.url&&/\.(jpg|jpeg|png|webp)/i.test(x.url));
+  let imgs=Object.values(c.query?.pages||{}).map(x=>({title:x.title,url:x.imageinfo?.[0]?.thumburl||x.imageinfo?.[0]?.url})).filter(x=>x.url&&/\.(jpg|jpeg|png|webp)/i.test(x.url);
   if(g.thumbnail?.source)imgs.unshift({title:'Wikipedia メイン画像',url:g.thumbnail.source});
   if(imgs.length){
    $('results').innerHTML=imgs.map((x,i)=>`<button class="result" data-img="${i}"><img src="${x.url}" alt=""><div>${esc(x.title.replace(/^File:/,''))}</div></button>`).join('');
@@ -338,10 +380,10 @@ async function searchMobyCovers(title,platform){
   const candidates=games.games||[];
   if(!candidates.length)return false;
   let best=candidates.find(x=>x.title.toLowerCase()===title.toLowerCase())||candidates[0];
-  let plat=(best.platforms||[]).find(x=>String(x.platform_name).toLowerCase().includes(platform.toLowerCase().replace('steam / pc','windows')));
+  let plat=(best.platforms||[]).find(x=>String(x.platform_name).toLowerCase().includes(platform.toLowerCase().replace('steam / pc','windows'));
   if(!plat)plat=(best.platforms||[])[0]; if(!plat)return false;
   const covers=await wikiJSON(`https://api.mobygames.com/v1/games/${best.game_id}/platforms/${plat.platform_id}/covers?api_key=${encodeURIComponent(key)}`);
-  const groups=(covers.cover_groups||[]).sort((a,b)=>(b.countries||[]).includes('Japan')-(a.countries||[]).includes('Japan'));
+  const groups=(covers.cover_groups||[]).sort((a,b)=>(b.countries||[]).includes('Japan')-(a.countries||[]).includes('Japan');
   const imgs=[];
   for(const gr of groups)for(const c of (gr.covers||[]))if(c.scan_of==='Front Cover')imgs.push({url:c.image||c.thumbnail_image,title:`${(gr.countries||[]).join('/')} · Front Cover`});
   if(!imgs.length)return false;
@@ -369,7 +411,7 @@ $('saveBtn').onclick=()=>{
 };
 $('deleteBtn').onclick=()=>{if(confirm('このゲームを削除しますか？')){db.games=db.games.filter(g=>g.id!==editingId);persist();editDialog.close();render()}};
 document.querySelectorAll('nav [data-view]').forEach(b=>b.onclick=()=>{currentView=b.dataset.view;document.querySelectorAll('nav [data-view]').forEach(x=>x.classList.toggle('active',x===b));render()});
-['filterText','filterPlatform','sort'].forEach(id=>$(id).addEventListener(id==='filterText'?'input':'change',render));
+['filterText','filterPlatform','sort'].forEach(id=>$(id).addEventListener(id==='filterText'?'input':'change',render);
 $('shelfView').onclick=()=>{displayMode='shelf';localStorage.setItem('gameStock_view','shelf');render()};
 $('listView').onclick=()=>{displayMode='list';localStorage.setItem('gameStock_view','list');render()};
 $('settingsBtn').onclick=()=>{$('rakutenAppId').value=localStorage.getItem('gameStock_rakuten_appid')||'';$('rakutenAccessKey').value=localStorage.getItem('gameStock_rakuten_accesskey')||'';$('braveKey').value=localStorage.getItem('gameStock_brave_key')||'';$('mobyKey').value=localStorage.getItem('gameStock_moby_key')||'';settingsDialog.showModal()};
